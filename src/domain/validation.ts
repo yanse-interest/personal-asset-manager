@@ -1,9 +1,10 @@
 import { isLocalDate } from './dates';
 import { MAX_AMOUNT_CENTS } from './money';
-import type { Asset, CostRecord, RevenueRecord, LocalDate } from './types';
+import type { Asset, Category, CostRecord, RevenueRecord, LocalDate, LegacyAssetV1 } from './types';
 
 export const MAX_RECORDS = 5_000;
 export const MAX_USAGE_COUNT = 2_147_483_647;
+export const MAX_CATEGORIES = 100;
 
 type PlainObject = Record<string, unknown>;
 
@@ -36,7 +37,7 @@ function note(value: unknown, path: string): string | null {
   return string(value, path, 1, 2_000);
 }
 
-function uuid(value: unknown, path: string): string {
+export function validateUuid(value: unknown, path: string): string {
   if (typeof value !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value)) {
     throw new Error(`${path}: 必须是小写 UUID v4`);
   }
@@ -71,26 +72,55 @@ function usageCount(value: unknown, path: string): number {
   return value;
 }
 
+function validateLegacyAssetFields(value: unknown, today: LocalDate, path = 'asset'): LegacyAssetV1 {
+  localDate(today, 'today');
+  const v = object(value, path);
+  exactFields(v, ['id', 'name', 'purchaseCostCents', 'purchaseDate', 'costMode', 'usageCount', 'expiryDate', 'note', 'createdAt', 'updatedAt'], path);
+  const purchaseDate = localDate(v.purchaseDate, `${path}.purchaseDate`);
+  if (purchaseDate > today) throw new Error(`${path}.purchaseDate: 不得晚于今天`);
+  const expiryDate = v.expiryDate === null ? null : localDate(v.expiryDate, `${path}.expiryDate`);
+  if (expiryDate !== null && expiryDate < purchaseDate) throw new Error(`${path}.expiryDate: 不得早于购买日期`);
+  if (v.costMode !== 'day' && v.costMode !== 'use') throw new Error(`${path}.costMode: 未知观察方式`);
+  return {
+    id: validateUuid(v.id, `${path}.id`),
+    name: string(v.name, `${path}.name`, 1, 100),
+    purchaseCostCents: amount(v.purchaseCostCents, `${path}.purchaseCostCents`, true),
+    purchaseDate,
+    costMode: v.costMode,
+    usageCount: usageCount(v.usageCount, `${path}.usageCount`),
+    expiryDate,
+    note: note(v.note, `${path}.note`),
+    createdAt: validateInstant(v.createdAt, `${path}.createdAt`),
+    updatedAt: validateInstant(v.updatedAt, `${path}.updatedAt`),
+  };
+}
+
+export function validateLegacyAssetV1(value: unknown, today: LocalDate): LegacyAssetV1 {
+  return validateLegacyAssetFields(value, today);
+}
+
 export function validateAsset(value: unknown, today: LocalDate): Asset {
   localDate(today, 'today');
   const v = object(value, 'asset');
-  exactFields(v, ['id', 'name', 'purchaseCostCents', 'purchaseDate', 'costMode', 'usageCount', 'expiryDate', 'note', 'createdAt', 'updatedAt'], 'asset');
-  const purchaseDate = localDate(v.purchaseDate, 'asset.purchaseDate');
-  if (purchaseDate > today) throw new Error('asset.purchaseDate: 不得晚于今天');
-  const expiryDate = v.expiryDate === null ? null : localDate(v.expiryDate, 'asset.expiryDate');
-  if (expiryDate !== null && expiryDate < purchaseDate) throw new Error('asset.expiryDate: 不得早于购买日期');
-  if (v.costMode !== 'day' && v.costMode !== 'use') throw new Error('asset.costMode: 未知观察方式');
+  exactFields(v, ['id', 'name', 'purchaseCostCents', 'purchaseDate', 'costMode', 'usageCount', 'expiryDate', 'note', 'createdAt', 'updatedAt', 'categoryId', 'lifecycleStatus', 'endedDate'], 'asset');
+  const legacy = validateLegacyAssetFields(Object.fromEntries(Object.entries(v).filter(([key]) => !['categoryId', 'lifecycleStatus', 'endedDate'].includes(key))), today);
+  const categoryId = v.categoryId === null ? null : validateUuid(v.categoryId, 'asset.categoryId');
+  if (v.lifecycleStatus !== 'active' && v.lifecycleStatus !== 'retired' && v.lifecycleStatus !== 'sold') throw new Error('asset.lifecycleStatus: 未知资产状态');
+  const endedDate = v.endedDate === null ? null : localDate(v.endedDate, 'asset.endedDate');
+  if (v.lifecycleStatus === 'active' && endedDate !== null) throw new Error('asset.endedDate: 服役中资产不得设置结束日期');
+  if (v.lifecycleStatus !== 'active' && endedDate === null) throw new Error('asset.endedDate: 已结束资产必须设置结束日期');
+  if (endedDate !== null && (endedDate < legacy.purchaseDate || endedDate > today)) throw new Error('asset.endedDate: 必须在购买日至今天之间');
+  return { ...legacy, categoryId, lifecycleStatus: v.lifecycleStatus, endedDate };
+}
+
+export function validateCategory(value: unknown): Category {
+  const v = object(value, 'category');
+  exactFields(v, ['id', 'name', 'createdAt', 'updatedAt'], 'category');
   return {
-    id: uuid(v.id, 'asset.id'),
-    name: string(v.name, 'asset.name', 1, 100),
-    purchaseCostCents: amount(v.purchaseCostCents, 'asset.purchaseCostCents', true),
-    purchaseDate,
-    costMode: v.costMode,
-    usageCount: usageCount(v.usageCount, 'asset.usageCount'),
-    expiryDate,
-    note: note(v.note, 'asset.note'),
-    createdAt: validateInstant(v.createdAt, 'asset.createdAt'),
-    updatedAt: validateInstant(v.updatedAt, 'asset.updatedAt'),
+    id: validateUuid(v.id, 'category.id'),
+    name: string(v.name, 'category.name', 1, 40),
+    createdAt: validateInstant(v.createdAt, 'category.createdAt'),
+    updatedAt: validateInstant(v.updatedAt, 'category.updatedAt'),
   };
 }
 
@@ -103,8 +133,8 @@ export function validateCostRecord(value: unknown, today: LocalDate, purchaseDat
   if (date < purchaseDate || date > today) throw new Error('costRecord.date: 必须在购买日至今天之间');
   if (v.kind !== 'additional' && v.kind !== 'consumable') throw new Error('costRecord.kind: 未知成本类型');
   return {
-    id: uuid(v.id, 'costRecord.id'),
-    assetId: uuid(v.assetId, 'costRecord.assetId'),
+    id: validateUuid(v.id, 'costRecord.id'),
+    assetId: validateUuid(v.assetId, 'costRecord.assetId'),
     kind: v.kind,
     amountCents: amount(v.amountCents, 'costRecord.amountCents', false),
     date,
@@ -122,8 +152,8 @@ export function validateRevenueRecord(value: unknown, today: LocalDate, purchase
   const date = localDate(v.date, 'revenueRecord.date');
   if (date < purchaseDate || date > today) throw new Error('revenueRecord.date: 必须在购买日至今天之间');
   return {
-    id: uuid(v.id, 'revenueRecord.id'),
-    assetId: uuid(v.assetId, 'revenueRecord.assetId'),
+    id: validateUuid(v.id, 'revenueRecord.id'),
+    assetId: validateUuid(v.assetId, 'revenueRecord.assetId'),
     amountCents: amount(v.amountCents, 'revenueRecord.amountCents', false),
     date,
     note: note(v.note, 'revenueRecord.note'),

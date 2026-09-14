@@ -69,6 +69,53 @@ describe('asset CRUD', () => {
 
 
 describe('usage count writes', () => {
+  it('rejects a stale +1 after ending service but permits historical correction and reopening', async () => {
+    const created = await createAsset(input, database, now);
+    const ended = await updateAsset(created.id, created, { ...input, lifecycleStatus: 'sold', endedDate: '2026-09-13', salePrice: '1' }, database, now);
+    await expect(incrementUsage(created.id, database, now)).rejects.toThrow('已结束服役');
+    expect((await database.assets.get(created.id))?.usageCount).toBe(3);
+    const corrected = await correctUsageCount(created.id, 3, '4', database, now);
+    expect(corrected.usageCount).toBe(4);
+    const reopened = await updateAsset(created.id, corrected, { ...input, lifecycleStatus: 'active', endedDate: null }, database, now);
+    expect(reopened.endedDate).toBeNull();
+    expect((await incrementUsage(created.id, database, now)).usageCount).toBe(5);
+    expect(ended.lifecycleStatus).toBe('sold');
+  });
+
+  it('requires a positive sale price and writes exactly one revenue on transition', async () => {
+    const created = await createAsset(input, database, now);
+    await expect(updateAsset(created.id, created, { ...input, lifecycleStatus: 'sold', endedDate: '2026-09-13' }, database, now)).rejects.toThrow('卖价必须填写');
+    await expect(updateAsset(created.id, created, { ...input, lifecycleStatus: 'sold', endedDate: '2026-09-13', salePrice: '0' }, database, now)).rejects.toThrow();
+    expect(await database.revenueRecords.count()).toBe(0);
+    const sold = await updateAsset(created.id, created, { ...input, lifecycleStatus: 'sold', endedDate: '2026-09-13', salePrice: '2' }, database, now);
+    expect((await database.revenueRecords.toArray())[0]).toMatchObject({ assetId: created.id, amountCents: 200, date: '2026-09-13', note: '出售' });
+    await updateAsset(created.id, sold, { ...input, lifecycleStatus: 'sold', endedDate: '2026-09-13' }, database, now);
+    expect(await database.revenueRecords.count()).toBe(1);
+  });
+
+  it('creates a sold asset and sale revenue atomically, including failure rollback', async () => {
+    await expect(createAsset({ ...input, lifecycleStatus: 'sold', endedDate: '2026-09-13' }, database, now)).rejects.toThrow('卖价必须填写');
+    expect(await database.assets.count()).toBe(0);
+    const fail = () => { throw new Error('sale insert failed'); };
+    database.revenueRecords.hook('creating').subscribe(fail);
+    await expect(createAsset({ ...input, lifecycleStatus: 'sold', endedDate: '2026-09-13', salePrice: '5' }, database, now)).rejects.toThrow('sale insert failed');
+    database.revenueRecords.hook('creating').unsubscribe(fail);
+    expect(await database.assets.count()).toBe(0);
+    const sold = await createAsset({ ...input, lifecycleStatus: 'sold', endedDate: '2026-09-13', salePrice: '5' }, database, now);
+    expect((await database.revenueRecords.toArray())[0]).toMatchObject({ assetId: sold.id, amountCents: 500 });
+  });
+
+  it('rolls back a sale transition if revenue insert fails and reserves one capacity slot', async () => {
+    const created = await createAsset(input, database, now);
+    const fail = () => { throw new Error('sale insert failed'); };
+    database.revenueRecords.hook('creating').subscribe(fail);
+    await expect(updateAsset(created.id, created, { ...input, lifecycleStatus: 'sold', endedDate: '2026-09-13', salePrice: '5' }, database, now)).rejects.toThrow('sale insert failed');
+    database.revenueRecords.hook('creating').unsubscribe(fail);
+    expect(await database.assets.get(created.id)).toEqual(created);
+    await database.costRecords.bulkAdd(Array.from({ length: 4_999 }, () => ({ id: crypto.randomUUID(), assetId: created.id, kind: 'additional' as const, amountCents: 1, date: '2026-09-13', note: null, createdAt: now.toISOString(), updatedAt: now.toISOString() })));
+    await expect(updateAsset(created.id, created, { ...input, lifecycleStatus: 'sold', endedDate: '2026-09-13', salePrice: '5' }, database, now)).rejects.toThrow('5000');
+    expect((await database.assets.get(created.id))?.lifecycleStatus).toBe('active');
+  });
   it('increments atomically across two database connections', async () => {
     const created = await createAsset({ ...input, initialUsageCount: '0' }, database, now);
     const otherConnection = new AssetDatabase(database.name);

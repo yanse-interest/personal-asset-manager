@@ -20,7 +20,7 @@ button:disabled { opacity: .6; cursor: wait; }
 .empty-state { padding: 2rem 1rem; text-align: center; }
 form { display: grid; gap: 1rem; }
 label:not(.inline) { display: grid; gap: .35rem; font-weight: 600; }
-input, textarea { width: 100%; min-height: 44px; border: 1px solid #9ba7b2; border-radius: .55rem; padding: .65rem; font: inherit; background: white; }
+input, textarea, select { width: 100%; min-height: 44px; border: 1px solid #9ba7b2; border-radius: .55rem; padding: .65rem; font: inherit; background: white; }
 textarea { min-height: 7rem; resize: vertical; }
 fieldset { border: 1px solid #d7dde3; border-radius: .65rem; }
 .inline { display: inline-flex; align-items: center; margin-right: 1.5rem; gap: .4rem; }
@@ -58,6 +58,14 @@ dt { color: #566371; } dd { margin: 0; overflow-wrap: anywhere; }
 .backup-file-label { display: grid; gap: .4rem; font-weight: 600; }
 .backup-preview { margin: 1rem 0; padding: 1rem; border: 1px solid #d7dde3; border-radius: .8rem; background: white; overflow-wrap: anywhere; }
 .backup-preview h3 { margin-top: 0; }
+.category-management { list-style: none; padding: 0; display: grid; gap: .5rem; }
+.category-management li { display: flex; align-items: center; justify-content: space-between; gap: .75rem; overflow-wrap: anywhere; padding: .6rem; border: 1px solid #d7dde3; border-radius: .65rem; background: white; }
+.category-management li > span { min-width: 0; }
+@media (max-width: 24rem) { .category-management li { align-items: flex-start; flex-direction: column; } }
+.ledger-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: .6rem; }
+.ledger-links a { display: grid; gap: .2rem; min-width: 0; padding: .8rem; border: 1px solid #d7dde3; border-radius: .65rem; background: white; text-decoration: none; overflow-wrap: anywhere; }
+.ledger-links span, .ledger-counts { color: #566371; }
+.ledger-counts { display: flex; flex-wrap: wrap; gap: .8rem; }
 
 .pwa-prompt { position: fixed; z-index: 8; left: 50%; bottom: calc(1rem + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(calc(100% - 2rem), 40rem); padding: 1rem; border: 1px solid #9ba7b2; border-radius: .8rem; background: white; box-shadow: 0 .5rem 2rem rgb(0 0 0 / 18%); }
 .pwa-prompt p:first-child { margin-top: 0; }

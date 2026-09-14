@@ -89,7 +89,7 @@ try {
     if (!downloaded) throw new Error('浏览器没有保存 JSON 文件');
     const backupPath = join(downloads, downloaded);
     const saved = JSON.parse(await readFile(backupPath, 'utf8'));
-    if (saved.assets?.length !== 1 || saved.costRecords?.length !== 1 || saved.revenueRecords?.length !== 1) throw new Error('下载文件缺少三表记录');
+    if (saved.schemaVersion !== 2 || saved.assets?.length !== 1 || saved.categories?.length !== 1 || saved.costRecords?.length !== 1 || saved.revenueRecords?.length !== 1) throw new Error('下载文件缺少四表记录');
     await fixture('mutate');
     async function chooseDownloadedFile() {
       const documentNode = await app.send('DOM.getDocument');
@@ -107,7 +107,73 @@ try {
     await app.evaluate('[...document.querySelectorAll("button")].find(button => button.textContent === "确认替换")?.click()');
     await waitFor(app, 'location.hash === "#/"', '导入完成并返回首页');
     await fixture('verify');
-    console.log('PASS: Chrome 实际下载 JSON、取消预览无写入、重新选择文件并恢复三表全字段');
+    await app.evaluate('location.hash = "#/"');
+    await waitFor(app, 'document.body.innerText.includes("状态账本") && document.body.innerText.includes("类别账本")', 'V2 首页账本');
+    await app.evaluate('location.hash = "#/ledgers/active"');
+    await waitFor(app, 'document.body.innerText.includes("服役中账本") && document.body.innerText.includes("备份测试资产")', '服役中账本');
+    await app.evaluate('location.hash = "#/ledgers/retired"');
+    await waitFor(app, 'document.body.innerText.includes("已退役账本") && document.body.innerText.includes("此账本暂无资产")', '空状态账本');
+    await app.evaluate('location.hash = "#/categories/55555555-5555-4555-8555-555555555555"');
+    await waitFor(app, 'document.body.innerText.includes("数码账本") && document.body.innerText.includes("备份测试资产")', '类别账本');
+    await app.evaluate('(() => { const select = document.querySelector("select"); const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set; setter.call(select, "sold"); select.dispatchEvent(new Event("change", { bubbles: true })); })()');
+    await waitFor(app, 'document.body.innerText.includes("此账本暂无资产")', '类别状态筛选');
+    await app.evaluate('location.hash = "#/assets/11111111-1111-4111-8111-111111111111/edit"');
+    await waitFor(app, 'document.body.innerText.includes("编辑资产")', 'V2 资产编辑');
+    await app.evaluate('(() => { const select = [...document.querySelectorAll("select")].find(item => item.closest("label")?.textContent?.startsWith("资产状态")); const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set; setter.call(select, "sold"); select.dispatchEvent(new Event("change", { bubbles: true })); })()');
+    await waitFor(app, 'document.body.innerText.includes("结束日期")', '结束日期字段');
+    await app.evaluate('(() => { const input = [...document.querySelectorAll("input[type=date]")].find(item => item.closest("label")?.textContent?.startsWith("结束日期")); const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set; setter.call(input, "2026-09-13"); input.dispatchEvent(new Event("input", { bubbles: true })); input.dispatchEvent(new Event("change", { bubbles: true })); })()');
+    await waitFor(app, 'document.body.innerText.includes("卖价（元，必填）")', '必填卖价字段');
+    await app.evaluate('(() => { const input = [...document.querySelectorAll("input")].find(item => item.closest("label")?.textContent?.startsWith("卖价（元，必填）")); const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set; setter.call(input, "2"); input.dispatchEvent(new Event("input", { bubbles: true })); input.dispatchEvent(new Event("change", { bubbles: true })); })()');
+    await app.evaluate('document.querySelector("form")?.requestSubmit()');
+    await waitFor(app, 'location.hash === "#/assets/11111111-1111-4111-8111-111111111111" && document.body.innerText.includes("已卖出")', '状态保存');
+    if (await app.evaluate('document.body.innerText.includes("+ 使用一次")')) throw new Error('已卖出资产仍显示 +1');
+    if (!await app.evaluate('document.body.innerText.includes("卖价已按“出售”收益流水记录")')) throw new Error('已卖出资产缺少收益流水提示');
+    if (!await app.evaluate('document.body.innerText.includes("¥2.00")')) throw new Error('卖价收益未计入详情');
+    await app.evaluate('location.hash = "#/ledgers/sold"');
+    await waitFor(app, 'document.body.innerText.includes("已卖出账本") && document.body.innerText.includes("备份测试资产")', '资产状态转移');
+    await app.evaluate('location.hash = "#/settings"');
+    await waitFor(app, 'document.body.innerText.includes("类别管理")', '类别管理页');
+    await app.evaluate('(() => { const input = [...document.querySelectorAll("input")].find(item => item.closest("label")?.textContent?.startsWith("新增类别")); const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set; setter.call(input, "家电"); input.dispatchEvent(new Event("input", { bubbles: true })); })()');
+    await app.evaluate('[...document.querySelectorAll("button")].find(item => item.textContent === "新增类别")?.click()');
+    await waitFor(app, 'Boolean([...document.querySelectorAll(".category-management li")].find(item => item.textContent?.includes("家电")))', '浏览器新增类别');
+    await app.evaluate('(() => { const row = [...document.querySelectorAll(".category-management li")].find(item => item.textContent?.includes("家电")); row?.querySelector("button")?.click(); })()');
+    await waitFor(app, 'document.body.innerText.includes("修改“家电”")', '类别改名表单');
+    await app.evaluate('(() => { const input = [...document.querySelectorAll("input")].find(item => item.closest("label")?.textContent?.startsWith("修改“家电”")); const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set; setter.call(input, "厨电"); input.dispatchEvent(new Event("input", { bubbles: true })); })()');
+    await app.evaluate('[...document.querySelectorAll("button")].find(item => item.textContent === "保存名称")?.click()');
+    await waitFor(app, 'Boolean([...document.querySelectorAll(".category-management li")].find(item => item.textContent?.includes("厨电")))', '浏览器类别改名');
+    await app.evaluate('(() => { const row = [...document.querySelectorAll(".category-management li")].find(item => item.textContent?.includes("数码")); row?.querySelector("button.danger")?.click(); })()');
+    await waitFor(app, 'document.body.innerText.includes("关联 1 件资产将转为未分类")', '删除非空类别确认');
+    await app.evaluate('[...document.querySelectorAll(".dialog button")].find(item => item.textContent === "删除类别")?.click()');
+    await waitFor(app, '!Boolean([...document.querySelectorAll(".category-management li")].find(item => item.textContent?.includes("数码")))', '浏览器删除类别');
+    await app.evaluate('location.hash = "#/assets/11111111-1111-4111-8111-111111111111"');
+    await waitFor(app, 'document.body.innerText.includes("未分类") && document.body.innerText.includes("已卖出")', '类别转未分类后资产保留');
+    for (const width of [320, 375, 390, 430]) {
+      await app.send('Emulation.setDeviceMetricsOverride', { width, height: 800, deviceScaleFactor: 1, mobile: true });
+      const overflow = await app.evaluate('document.documentElement.scrollWidth > document.documentElement.clientWidth');
+      if (overflow) throw new Error(`${width}px 详情页横向溢出`);
+    }
+    await app.evaluate('location.hash = "#/"');
+    await waitFor(app, 'document.body.innerText.includes("状态账本")', '响应式首页');
+    for (const width of [320, 375, 390, 430]) {
+      await app.send('Emulation.setDeviceMetricsOverride', { width, height: 800, deviceScaleFactor: 1, mobile: true });
+      const overflow = await app.evaluate('document.documentElement.scrollWidth > document.documentElement.clientWidth');
+      if (overflow) throw new Error(`${width}px 首页横向溢出`);
+    }
+    await app.evaluate('location.hash = "#/settings"');
+    await waitFor(app, 'document.body.innerText.includes("导入 JSON")', '旧版备份入口');
+    const oldDocument = await app.send('DOM.getDocument');
+    const oldInput = await app.send('DOM.querySelector', { nodeId: oldDocument.root.nodeId, selector: 'input[type=file]' });
+    await app.send('DOM.setFileInputFiles', { nodeId: oldInput.nodeId, files: [resolve('tests/fixtures/backups/v1-sample.json')] });
+    await waitFor(app, 'document.body.innerText.includes("旧版备份：导入后所有资产默认为服役中、未分类")', 'v1 预览映射');
+    await app.evaluate('[...document.querySelectorAll("button")].find(item => item.textContent?.includes("覆盖当前数据"))?.click()');
+    await waitFor(app, 'document.body.innerText.includes("覆盖全部本地数据？")', 'v1 覆盖确认');
+    await app.evaluate('[...document.querySelectorAll(".dialog button")].find(item => item.textContent === "确认替换")?.click()');
+    await waitFor(app, 'location.hash === "#/" && document.body.innerText.includes("旧版咖啡机")', 'v1 文件恢复');
+    await app.evaluate('location.hash = "#/ledgers/active"');
+    await waitFor(app, 'document.body.innerText.includes("旧版咖啡机")', 'v1 资产映射至服役中');
+    await app.evaluate('location.hash = "#/categories/uncategorized"');
+    await waitFor(app, 'document.body.innerText.includes("旧版咖啡机")', 'v1 资产映射至未分类');
+    console.log('PASS: Chrome v1/v2 JSON 恢复、类别 CRUD、状态编辑、账本筛选及移动宽度');
   } finally { app.close(); }
 } finally {
   browser?.kill('SIGTERM');

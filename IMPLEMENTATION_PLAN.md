@@ -1,5 +1,7 @@
 # Implementation Plan
 
+> 以下 Phase 1–8 是 V1 历史执行契约。新的状态账本与类别功能按 [V2_CHANGE_SPEC.md](V2_CHANGE_SPEC.md) 中 V2 Phase 1–5 顺序实施；本阶段只完成设计，未启动 V2 Phase 1。
+
 2026-09-13，设计交付。Phase 1–6 功能已实施，Phase 6 手机 JSON 文件保存与重新导入已在小米 15 Pro 验证；Phase 7 代码、桌面自动化和 Android Chrome 网址模式的离线关键链路已完成，主屏幕安装暂缓；Phase 8 未开始。以下阶段描述保留为执行契约。实施唯一模型依据 DATA_MODEL.md；方案依据 TECH_SPEC.md；页面依据 UI_STRUCTURE.md；验收编号依据 ACCEPTANCE_CRITERIA.md。
 
 执行顺序固定 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8。各阶段完成条件达成才进入下一阶段；阶段涉及的文件是规划路径，不代表现存。若出现与契约冲突的需求，先更新设计与迁移说明，不能临时新建重复模型。

@@ -4,7 +4,7 @@ import { incrementUsage } from '../data/assets';
 import { calculateAssetCosts } from '../domain/calculations';
 import { expiryStatus } from '../domain/dates';
 import { formatCents, formatRatio } from '../domain/money';
-import type { Asset, CostRecord, RevenueRecord } from '../domain/types';
+import type { Asset, Category, CostRecord, RevenueRecord } from '../domain/types';
 import { MAX_USAGE_COUNT } from '../domain/validation';
 
 function expiryText(date: string | null, today: string): string {
@@ -14,7 +14,8 @@ function expiryText(date: string | null, today: string): string {
   return status.kind === 'future' ? `距到期 ${status.days} 天` : `已到期 ${status.days} 天`;
 }
 
-export function AssetCard({ asset, costs, revenues, today }: { asset: Asset; costs: CostRecord[]; revenues: RevenueRecord[]; today: string }) {
+const statusLabel = { active: '服役中', retired: '已退役', sold: '已卖出' };
+export function AssetCard({ asset, category, costs, revenues, today }: { asset: Asset; category?: Category | null; costs: CostRecord[]; revenues: RevenueRecord[]; today: string }) {
   const values = calculateAssetCosts(asset, costs, revenues, today);
   const [incrementing, setIncrementing] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -45,12 +46,13 @@ export function AssetCard({ asset, costs, revenues, today }: { asset: Asset; cos
     <Link className="asset-card-link" to={`/assets/${asset.id}`}>
       <span className="asset-card-heading"><strong>{asset.name}</strong><small>{asset.purchaseDate}</small></span>
       <span className="primary-metric">{primary}</span>
-      <small>净投入 {formatCents(values.netCostCents)} · {asset.costMode === 'day' ? `持有 ${values.daysOwned} 天` : `累计 ${asset.usageCount} 次`}</small>
-      <small>{expiryText(asset.expiryDate, today)}</small>
+      <small>{statusLabel[asset.lifecycleStatus]} · {category?.name ?? '未分类'}</small>
+      <small>净投入 {formatCents(values.netCostCents)} · {asset.costMode === 'day' ? `计费 ${values.serviceDays} 天` : `累计 ${asset.usageCount} 次`}</small>
+      {asset.lifecycleStatus === 'active' && <small>{expiryText(asset.expiryDate, today)}</small>}
       {values.netCostCents < 0 && <small className="notice">收益已超过投入</small>}
-      {values.clockBeforePurchase && <small className="notice">设备日期早于购买日期，持有天数暂按 1 天计算</small>}
+      {values.clockBeforePurchase && <small className="notice">设备日期早于资产日期，请检查系统时钟</small>}
     </Link>
-    {asset.costMode === 'use' && <div className="usage-action">
+    {asset.lifecycleStatus === 'active' && asset.costMode === 'use' && <div className="usage-action">
       <button className="primary" type="button" disabled={incrementing || atUsageLimit} onClick={handleIncrement}>
         {incrementing ? '记录中…' : '+ 使用一次'}
       </button>

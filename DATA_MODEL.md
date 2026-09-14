@@ -1,6 +1,8 @@
 # 数据模型与计算契约
 
-版本：持久化模型 v1，JSON schemaVersion 1；2026-09-13。本文为 V1 已运行字段和计算的权威。来源与范围见 TECH_SPEC.md。
+> 本文冻结已运行的 V1 数据/备份格式，供迁移和旧备份验证。目标 V2 新字段、Category、计算与兼容规则见 [V2_CHANGE_SPEC.md](V2_CHANGE_SPEC.md)；实施前不能把 V2 当成当前库。
+
+版本：持久化模型 v1，JSON schemaVersion 1；2026-09-13。本文为 V1 已运行字段和计算的历史权威，现已有真实用户数据；V2 增量另见 V2_CHANGE_SPEC.md。来源与范围见 TECH_SPEC.md。
 
 ## 1. 公共规则
 

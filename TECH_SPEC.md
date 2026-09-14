@@ -1,5 +1,7 @@
 # 技术方案：大件资产成本管理 H5 / PWA
 
+> 本文是现行 V1 技术基线。用户 2026-09-14 提出的状态账本与自定义类别属于待实施 V2；变更范围、迁移、阶段与验收以 [V2_CHANGE_SPEC.md](V2_CHANGE_SPEC.md) 为准，未列变更仍沿用本文。
+
 设计基线：2026-09-13。状态：Phase 1–6 功能已实施；Phase 7 PWA 代码与桌面自动化已完成，小米 15 Pro Android Chrome 网址模式的离线冷启动、离线写入/+1、JSON 文件导出/导入已通过；主屏幕安装暂缓，Phase 8 未开始。
 
 ## 1. 事实来源与范围
@@ -59,7 +61,7 @@ src/
 
 ## 5. 数据库与并发
 
-数据库固定名称 `large-asset-cost`，Dexie schema version 从 1 起。三表及索引：`assets: 'id'`，`costRecords: 'id, assetId'`，`revenueRecords: 'id, assetId'`。V1 精确字段见 DATA_MODEL.md。
+数据库固定名称 `large-asset-cost`，Dexie schema version 从 1 起。三表及索引：`assets: 'id'`，`costRecords: 'id, assetId'`，`revenueRecords: 'id, assetId'`。V1 精确字段见 DATA_MODEL.md；V2 增量模型与迁移见 V2_CHANGE_SPEC.md。
 
 - 主键使用 `crypto.randomUUID()`；安全源是运行基线。
 - 新建/修改流水在写事务中确认父资产存在，检查日期关系；新增时在覆盖三表的事务中检查总记录数上限。
@@ -102,7 +104,7 @@ IndexedDB 是同源浏览器存储，不是永不丢失的备份。设置页可�
 
 ## 9. 扩展边界与自检
 
-已有合理扩展点只有：纯计算函数、版本化 JSON、Dexie 显式迁移、按 assetId 关联的独立流水。新增展示指标无需改库；未来真正需要使用明细或多币种时提交设计变更与迁移，不预建空字段/插件系统。
+已有合理扩展点只有：纯计算函数、版本化 JSON、Dexie 显式迁移、按 assetId 关联的独立流水。新增展示指标无需改库；V2 生命周期结束已另见 V2_CHANGE_SPEC.md；未来真正需要使用明细或多币种时提交设计变更与迁移，不预建空字段/插件系统。
 
 本次自检已修正：持久 totals 会造成重复事实源，故不存；耗材不建实体；到期只作观察不停止分母；+1/删除/导入必须事务化；编辑冲突不覆盖次数；数据库版本与备份版本分开；日均与次均不写回；手机首次交付不作虚假无条件承诺。无 Repository/Service 层、全局状态库、后端或业务实现文件。后续按 IMPLEMENTATION_PLAN.md 执行；模型变更需同时更新五份文档和迁移/验收说明，不能随意改字段。
 

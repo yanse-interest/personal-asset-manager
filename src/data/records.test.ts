@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { calculateAssetCosts } from '../domain/calculations';
 import { AssetDatabase } from './db';
-import { createAsset } from './assets';
+import { createAsset, updateAsset } from './assets';
 import { RecordConflictError, createRecord, deleteRecord, getCostRecord, getRevenueRecord, updateCostRecord, updateRevenueRecord } from './records';
 
 const now = new Date('2026-09-13T08:00:00.000Z');
@@ -12,6 +12,15 @@ afterEach(async () => { database.close(); await database.delete(); });
 async function asset() { return createAsset({ name: '咖啡机', purchaseCost: '1000', purchaseDate: '2026-09-10', costMode: 'use', initialUsageCount: '2', expiryDate: null, note: null }, database, now); }
 
 describe('cost and revenue CRUD', () => {
+  it('allows settlement costs and manual sale proceeds after service ends without changing the denominator', async () => {
+    const parent = await asset();
+    const ended = await updateAsset(parent.id, parent, { name: parent.name, purchaseCost: '1000', purchaseDate: parent.purchaseDate, costMode: parent.costMode, expiryDate: null, note: null, lifecycleStatus: 'sold', endedDate: '2026-09-11', salePrice: '1' }, database, now);
+    await createRecord(parent.id, { type: 'additional', amount: '10', date: '2026-09-13', note: '结算费用' }, database, now);
+    await createRecord(parent.id, { type: 'revenue', amount: '1499', date: '2026-09-13', note: '补记' }, database, now);
+    const result = calculateAssetCosts(ended, await database.costRecords.toArray(), await database.revenueRecords.toArray(), '2026-09-15');
+    expect(result).toMatchObject({ serviceDays: 2, totalCostCents: 101_000, revenueCents: 150_000, netCostCents: -49_000 });
+    expect((await database.assets.get(parent.id))?.endedDate).toBe('2026-09-11');
+  });
   it('creates all three allowed types and produces the fixed totals', async () => {
     const parent = await asset();
     const additional = await createRecord(parent.id, { type: 'additional', amount: '200', date: '2026-09-11', note: '维修' }, database, now);

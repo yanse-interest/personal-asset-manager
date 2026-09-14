@@ -2,8 +2,9 @@ export type LocalDate = string;
 export type Instant = string;
 export type CostMode = 'day' | 'use';
 export type CostKind = 'additional' | 'consumable';
+export type LifecycleStatus = 'active' | 'retired' | 'sold';
 
-export interface Asset {
+export interface LegacyAssetV1 {
   id: string;
   name: string;
   purchaseCostCents: number;
@@ -12,6 +13,19 @@ export interface Asset {
   usageCount: number;
   expiryDate: LocalDate | null;
   note: string | null;
+  createdAt: Instant;
+  updatedAt: Instant;
+}
+
+export interface Asset extends LegacyAssetV1 {
+  categoryId: string | null;
+  lifecycleStatus: LifecycleStatus;
+  endedDate: LocalDate | null;
+}
+
+export interface Category {
+  id: string;
+  name: string;
   createdAt: Instant;
   updatedAt: Instant;
 }
@@ -42,7 +56,23 @@ export interface BackupV1 {
   schemaVersion: 1;
   exportedAt: Instant;
   currency: 'CNY';
-  assets: Asset[];
+  assets: LegacyAssetV1[];
   costRecords: CostRecord[];
   revenueRecords: RevenueRecord[];
+}
+
+
+export interface BackupV2 {
+  format: 'large-asset-cost-backup';
+  schemaVersion: 2;
+  exportedAt: Instant;
+  currency: 'CNY';
+  assets: Asset[];
+  categories: Category[];
+  costRecords: CostRecord[];
+  revenueRecords: RevenueRecord[];
+}
+
+export interface BackupImport extends BackupV2 {
+  readonly sourceSchemaVersion: 1 | 2;
 }
