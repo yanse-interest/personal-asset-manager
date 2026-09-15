@@ -1,6 +1,6 @@
 import { localToday } from '../domain/dates';
 import { parseYuan } from '../domain/money';
-import type { Asset, CostMode, LifecycleStatus, LocalDate, RevenueRecord } from '../domain/types';
+import type { Asset, CostMode, CostRecord, LifecycleStatus, LocalDate, RevenueRecord } from '../domain/types';
 import { MAX_RECORDS, MAX_USAGE_COUNT, validateAsset, validateRevenueRecord } from '../domain/validation';
 import { db, type AssetDatabase } from './db';
 
@@ -8,10 +8,17 @@ export interface AssetInput {
   name: string; purchaseCost: string; purchaseDate: LocalDate; costMode: CostMode;
   initialUsageCount?: string; expiryDate: LocalDate | null; note: string | null;
   categoryId?: string | null; lifecycleStatus?: LifecycleStatus; endedDate?: LocalDate | null;
+  iconId?: string | null;
   salePrice?: string;
 }
 export type AssetPatch = Omit<AssetInput, 'initialUsageCount'>;
-export interface AssetDeleteSnapshot { asset: Asset; costRecordIds: string[]; revenueRecordIds: string[] }
+export interface AssetDeleteSnapshot {
+  asset: Asset;
+  costRecordIds: string[];
+  revenueRecordIds: string[];
+  costRecords: CostRecord[];
+  revenueRecords: RevenueRecord[];
+}
 
 export class AssetConflictError extends Error {
   constructor(message = '资产已在其他页面修改，请重新载入后核对。') { super(message); this.name = 'AssetConflictError'; }
@@ -59,6 +66,7 @@ export async function createAsset(input: AssetInput, database: AssetDatabase = d
     usageCount: input.costMode === 'use' ? parseUsageCount(input.initialUsageCount) : 0,
     expiryDate: input.expiryDate, note: input.note, createdAt: timestamp, updatedAt: timestamp,
     categoryId: input.categoryId ?? null, lifecycleStatus: input.lifecycleStatus ?? 'active', endedDate: input.endedDate ?? null,
+    iconId: input.iconId ?? null,
   }, localToday(now));
   const revenue = asset.lifecycleStatus === 'sold' ? saleRevenue(asset, input.salePrice, now) : null;
   await database.transaction('rw', database.assets, database.categories, database.costRecords, database.revenueRecords, async () => {
@@ -84,7 +92,7 @@ export async function updateAsset(id: string, expected: Asset, patch: AssetPatch
     if (categoryId !== null && !(await database.categories.get(categoryId))) throw new AssetConflictError('所选类别已不存在，请刷新后重试。');
     const updated = validateAsset({ ...current, name: patch.name, purchaseCostCents: parseYuan(patch.purchaseCost, true),
       purchaseDate: patch.purchaseDate, costMode: patch.costMode, expiryDate: patch.expiryDate,
-      note: patch.note, categoryId, lifecycleStatus: patch.lifecycleStatus ?? current.lifecycleStatus,
+      note: patch.note, categoryId, iconId: patch.iconId === undefined ? current.iconId : patch.iconId, lifecycleStatus: patch.lifecycleStatus ?? current.lifecycleStatus,
       endedDate: patch.lifecycleStatus === 'active' ? null : (patch.endedDate === undefined ? current.endedDate : patch.endedDate), updatedAt: now.toISOString() }, localToday(now));
     const revenue = current.lifecycleStatus !== 'sold' && updated.lifecycleStatus === 'sold' ? saleRevenue(updated, patch.salePrice, now) : null;
     if (revenue) await assertCapacity(database);
@@ -126,17 +134,22 @@ export async function correctUsageCount(
 
 async function snapshotInside(id: string, database: AssetDatabase): Promise<AssetDeleteSnapshot | null> {
   const asset = await database.assets.get(id); if (!asset) return null;
-  const [costRecordIds, revenueRecordIds] = await Promise.all([
-    database.costRecords.where('assetId').equals(id).primaryKeys(),
-    database.revenueRecords.where('assetId').equals(id).primaryKeys(),
+  const [costRecords, revenueRecords] = await Promise.all([
+    database.costRecords.where('assetId').equals(id).sortBy('id'),
+    database.revenueRecords.where('assetId').equals(id).sortBy('id'),
   ]);
-  return { asset, costRecordIds: costRecordIds.sort(), revenueRecordIds: revenueRecordIds.sort() };
+  return { asset, costRecordIds: costRecords.map(record => record.id), revenueRecordIds: revenueRecords.map(record => record.id), costRecords, revenueRecords };
 }
 export function getAssetDeleteSnapshot(id: string, database: AssetDatabase = db): Promise<AssetDeleteSnapshot | null> {
   return database.transaction('r', database.assets, database.costRecords, database.revenueRecords, () => snapshotInside(id, database));
 }
 function sameSnapshot(a: AssetDeleteSnapshot, b: AssetDeleteSnapshot): boolean {
-  return sameAsset(a.asset, b.asset) && a.costRecordIds.join('\0') === b.costRecordIds.join('\0') && a.revenueRecordIds.join('\0') === b.revenueRecordIds.join('\0');
+  const sameRecords = <T extends CostRecord | RevenueRecord>(left: T[], right: T[]) =>
+    left.length === right.length && left.every((record, index) => {
+      const expected = right[index]!;
+      return Object.keys(record).every(key => record[key as keyof T] === expected[key as keyof T]);
+    });
+  return sameAsset(a.asset, b.asset) && sameRecords(a.costRecords, b.costRecords) && sameRecords(a.revenueRecords, b.revenueRecords);
 }
 export async function deleteAsset(snapshot: AssetDeleteSnapshot, database: AssetDatabase = db): Promise<void> {
   await database.transaction('rw', database.assets, database.costRecords, database.revenueRecords, async () => {

@@ -11,11 +11,14 @@
     "preview": "vite preview",
     "test:e2e:usage": "node scripts/test-usage-e2e.mjs",
     "test:e2e:backup": "node scripts/test-backup-e2e.mjs",
-    "test:e2e:pwa": "node scripts/test-pwa-e2e.mjs"
+    "test:e2e:pwa": "node scripts/test-pwa-e2e.mjs",
+    "test:e2e:reliability": "node scripts/test-reliability-e2e.mjs",
+    "verify": "npm run build && npm test && npm run test:e2e:usage && npm run test:e2e:backup && npm run test:e2e:pwa && npm run test:e2e:reliability"
   },
   "dependencies": {
     "dexie": "4.4.6",
     "dexie-react-hooks": "4.4.0",
+    "lucide-react": "^0.468.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-router": "8.3.1"
@@ -28,7 +31,10 @@
     "typescript": "7.0.2",
     "vite": "7.3.6",
     "vite-plugin-pwa": "1.3.0",
-    "vitest": "3.2.4",
+    "vitest": "4.1.11",
     "workbox-window": "7.4.1"
+  },
+  "engines": {
+    "node": "^22.12.0 || >=24.0.0"
   }
 }

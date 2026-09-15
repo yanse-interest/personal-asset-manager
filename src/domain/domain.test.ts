@@ -13,7 +13,7 @@ const timestamp = '2026-09-13T00:00:00.000Z';
 const asset: Asset = {
   id, name: '咖啡机', purchaseCostCents: 100_000, purchaseDate: '2026-09-13',
   costMode: 'use', usageCount: 4, expiryDate: null, note: null,
-  categoryId: null, lifecycleStatus: 'active', endedDate: null,
+  categoryId: null, lifecycleStatus: 'active', endedDate: null, iconId: null,
   createdAt: timestamp, updatedAt: timestamp,
 };
 const costs: CostRecord[] = [

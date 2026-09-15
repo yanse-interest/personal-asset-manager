@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AssetDatabase } from './db';
 import { AssetConflictError, correctUsageCount, createAsset, deleteAsset, getAssetDeleteSnapshot, incrementUsage, updateAsset } from './assets';
 import { MAX_USAGE_COUNT } from '../domain/validation';
+import { createRecord, updateCostRecord, updateRevenueRecord } from './records';
 
 const now = new Date('2026-09-13T08:00:00.000Z');
 const input = { name: ' 咖啡机 ', purchaseCost: '999.99', purchaseDate: '2026-09-13', costMode: 'use' as const, initialUsageCount: '3', expiryDate: null, note: '' };
@@ -46,6 +47,25 @@ describe('asset CRUD', () => {
     await database.revenueRecords.add({ id: crypto.randomUUID(), assetId: created.id, amountCents: 10, date: '2026-09-13', note: null, createdAt: now.toISOString(), updatedAt: now.toISOString() });
     await expect(deleteAsset(snapshot!, database)).rejects.toBeInstanceOf(AssetConflictError);
     expect(await database.assets.get(created.id)).toBeDefined();
+  });
+
+  it.each(['additional', 'revenue'] as const)('refuses deletion after a confirmed %s record was edited with the same timestamp', async type => {
+    const created = await createAsset(input, database, now);
+    const initial = await createRecord(created.id, { type, amount: '1', date: input.purchaseDate, note: null }, database, now);
+    const snapshot = (await getAssetDeleteSnapshot(created.id, database))!;
+    const editedInput = { amount: '2', date: input.purchaseDate, note: '另一页面已更正' };
+    const otherConnection = new AssetDatabase(database.name);
+    try {
+      if (initial.table === 'cost') await updateCostRecord(created.id, initial.record, { ...editedInput, type: 'additional' }, otherConnection, now);
+      else await updateRevenueRecord(created.id, initial.record, editedInput, otherConnection, now);
+      await expect(deleteAsset(snapshot, database)).rejects.toBeInstanceOf(AssetConflictError);
+      expect(await database.assets.get(created.id)).toEqual(created);
+      const table = initial.table === 'cost' ? database.costRecords : database.revenueRecords;
+      expect(await table.get(initial.record.id)).toMatchObject({ amountCents: 200, note: editedInput.note, updatedAt: initial.record.updatedAt });
+      await deleteAsset((await getAssetDeleteSnapshot(created.id, database))!, database);
+      expect(await database.assets.get(created.id)).toBeUndefined();
+      expect(await table.get(initial.record.id)).toBeUndefined();
+    } finally { otherConnection.close(); }
   });
 
   it('enforces the shared 5,000-record capacity on create', async () => {

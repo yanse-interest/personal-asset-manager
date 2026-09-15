@@ -1,12 +1,13 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
+import { useModalFocus } from './useModalFocus';
 export function ConfirmDialog({ title, children, confirmLabel, busy = false, onCancel, onConfirm }: {
   title: string; children: ReactNode; confirmLabel: string; busy?: boolean; onCancel: () => void; onConfirm: () => void;
 }) {
-  const cancelRef = useRef<HTMLButtonElement>(null);
-  useEffect(() => { cancelRef.current?.focus(); }, []);
-  return <div className="dialog-backdrop"><section className="dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
-    <h2 id="confirm-title">{title}</h2>{children}<div className="button-row">
-      <button ref={cancelRef} type="button" onClick={onCancel} disabled={busy}>取消</button>
+  const dialogRef = useModalFocus(onCancel, busy);
+  const titleId = useId();
+  return <div className="dialog-backdrop"><section ref={dialogRef} tabIndex={-1} className="dialog" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+    <h2 id={titleId}>{title}</h2>{children}<div className="button-row">
+      <button type="button" onClick={onCancel} disabled={busy}>取消</button>
       <button type="button" className="danger" onClick={onConfirm} disabled={busy}>{busy ? '处理中…' : confirmLabel}</button>
     </div></section></div>;
 }

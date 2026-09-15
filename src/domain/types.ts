@@ -17,10 +17,14 @@ export interface LegacyAssetV1 {
   updatedAt: Instant;
 }
 
-export interface Asset extends LegacyAssetV1 {
+export interface AssetV2 extends LegacyAssetV1 {
   categoryId: string | null;
   lifecycleStatus: LifecycleStatus;
   endedDate: LocalDate | null;
+}
+
+export interface Asset extends AssetV2 {
+  iconId: string | null;
 }
 
 export interface Category {
@@ -67,12 +71,17 @@ export interface BackupV2 {
   schemaVersion: 2;
   exportedAt: Instant;
   currency: 'CNY';
-  assets: Asset[];
+  assets: AssetV2[];
   categories: Category[];
   costRecords: CostRecord[];
   revenueRecords: RevenueRecord[];
 }
 
-export interface BackupImport extends BackupV2 {
-  readonly sourceSchemaVersion: 1 | 2;
+export interface BackupV3 extends Omit<BackupV2, 'schemaVersion' | 'assets'> {
+  schemaVersion: 3;
+  assets: Asset[];
+}
+
+export interface BackupImport extends BackupV3 {
+  readonly sourceSchemaVersion: 1 | 2 | 3;
 }

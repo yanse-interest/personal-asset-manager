@@ -1,10 +1,12 @@
-# 大件资产成本管理
+# 久用
 
-个人使用的手机优先 H5 / PWA。V2 状态账本、自定义类别、生命周期结束日期、v1→v2 数据迁移和“卖出时必填卖价并原子记收益”已实现。桌面 typecheck、49 个单测、生产构建及三项 Chrome E2E 通过；小米 15 Pro Android Chrome 的同源升级、旧数据保留、类别/状态操作、网址模式离线冷启动与写入、v1/v2 文件在隔离地址恢复均已于 2026-09-14 通过。主屏幕应用图标随后成功出现；用户确认从图标以无地址栏独立窗口启动、与浏览器态共享原数据，且断网关闭后能从图标冷启动。旧标签阻塞升级及安装态离线写入仍未单独验收。
+个人使用的手机优先 H5 / PWA。界面提供五种配色与浅色、深色、跟随系统模式；新增和编辑好物可从 100 个本地立体图标、120 个 Emoji、100 个线性图标中选择。线性图标包含手机、平板、扫地机器人、净饮水机、跑步机等常见家电与数码产品。浏览器主题栏随配色变化，安装为独立应用后无浏览器地址栏。V3 数据库升级为旧好物补齐自动图标，备份升级为 v3 且仍可导入 v1/v2。2026-09-15 统一验收 `npm run verify` 已通过：生产构建、57 个单测、usage/backup/pwa/reliability 四组 Chrome E2E；涵盖跨标签更新、离线恢复及异常写入保护。本轮仍未单独在手机验收。此前小米 15 Pro Android Chrome 的同源升级、旧数据保留、类别/状态操作、网址模式离线冷启动与写入、v1/v2 文件在隔离地址恢复均已于 2026-09-14 通过。主屏幕应用图标随后成功出现；用户确认从图标以无地址栏独立窗口启动，原资产、次数和流水与浏览器态一致，断网彻底关闭后仍能从图标冷启动读取同一数据。旧标签阻塞升级及安装态离线写入仍未单独验收。
+
+可靠性与架构审查见 [REVIEW_2026-09-15.md](REVIEW_2026-09-15.md)，包含已修复问题、测试范围及剩余验收边界。 依赖漏洞修复后，Vitest 4.1.11 / Node 24 的完整验收再次通过；2026-09-15 官方 npm 全量审计为 0 项已知漏洞。
 
 ## 开发
 
-需要 Node.js `>=22.12`，建议使用受支持的 Node 22 LTS 或更新的 LTS 版本。当前锁文件由 Node 23.7.0 生成，依赖组合通过本项目验证。
+需要 Node.js 22.12+（22.x）或 24+，建议 Node 24 LTS；`.nvmrc` 已指定 24。Vitest 已升级为修复安全问题的 4.1.11，不再支持原来的 Node 23。此次依赖安装使用临时 npm 12.0.2，未改动全局 Node/npm。
 
 ```sh
 npm ci
@@ -14,10 +16,15 @@ npm test
 npm run test:e2e:usage
 npm run test:e2e:backup
 npm run test:e2e:pwa
+npm run test:e2e:reliability
 npm run build
+# 发布前统一验收（需要 Google Chrome，可用 CHROME_PATH 指定）
+npm run verify
 ```
 
 `npm run dev` 只供本机开发，不用于离线/安装验收。`npm run build` 生成 `dist/` 静态文件、manifest 和 Service Worker。生产构建不调用业务服务器，所有资产和流水只保存在当前浏览器的 IndexedDB。
+
+应用标志采用暖陶橙色的连续丝带造型，表达物品被长久使用与珍惜。网页页签和页头使用 `public/icon.svg`；主屏幕图标使用 `public/jiuyong-192.png`、`public/jiuyong-512.png`、`public/jiuyong-maskable-512.png` 与 `public/jiuyong-apple-touch-icon.png`。以后更换标志时同时替换这些文件，必要时更换文件名并同步 `vite.config.ts`、`index.html`，以减少已安装图标继续使用旧缓存的情况。
 
 ## Android Chrome 临时局域网安装
 
@@ -37,6 +44,6 @@ node scripts/serve-lan-https.mjs <电脑局域网IPv4> 8443 <输出目录>/serve
 
 ## 数据与设计依据
 
-当前仓库没有独立 PRD；需求基线为本任务中的用户说明。V2 增量以 [V2_CHANGE_SPEC.md](V2_CHANGE_SPEC.md) 为准，未变的 V1 规则见 [TECH_SPEC.md](TECH_SPEC.md)、[DATA_MODEL.md](DATA_MODEL.md)、[UI_STRUCTURE.md](UI_STRUCTURE.md)、[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)、[ACCEPTANCE_CRITERIA.md](ACCEPTANCE_CRITERIA.md)。业务数据保存在当前浏览器 origin 的 IndexedDB `large-asset-cost`。V2 升级会原子补齐旧资产的默认状态字段，保留原资产与流水。设置页导出 schemaVersion 2 JSON（四表）；导入 v1 或 v2 文件时先完整校验、预览，再单事务覆盖四表，不合并。空库备份会清空现有数据。**手机更新至 V2 前，请先从旧版导出 JSON，并确认文件可在系统文件中找到**；更换浏览器或地址前也要先备份。
+当前仓库没有独立 PRD；需求基线为本任务中的用户说明。V2 增量以 [V2_CHANGE_SPEC.md](V2_CHANGE_SPEC.md) 为准，未变的 V1 规则见 [TECH_SPEC.md](TECH_SPEC.md)、[DATA_MODEL.md](DATA_MODEL.md)、[UI_STRUCTURE.md](UI_STRUCTURE.md)、[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)、[ACCEPTANCE_CRITERIA.md](ACCEPTANCE_CRITERIA.md)。业务数据保存在当前浏览器 origin 的 IndexedDB `large-asset-cost`。V2 升级会原子补齐旧资产的默认状态字段；V3 再补齐 `iconId: null`，保留原资产与流水。设置页导出 schemaVersion 3 JSON（四表）；“导入 JSON”可导入 v1、v2 或 v3 备份，先完整校验、预览，再单事务覆盖四表；空库备份会清空现有数据。“增量导入 JSON”只接受 `large-asset-cost-increment` v1 文件，按同名类别归类，在单事务中追加好物与流水；发现已有同 ID 或同名称、购买日期、购买价的好物时整批拒绝。**手机更新前，请先从旧版导出 JSON，并确认文件可在系统文件中找到**；更换浏览器或地址前也要先备份。
 
 2026-09-14 真机验收使用原地址 `https://192.168.31.210:8443/`，已先确认旧版备份、再同源更新；隔离的 `:8444` 地址仅用于测试 v1/v2 文件恢复，测试服务已关闭，主站数据未被其覆盖。两件临时测试资产已从主站删除，用户确认原资产、次数和流水仍在；清理后备份文件为 `asset-cost-backup-20260914-194311.json`。备份文件在手机端，仓库不保存个人业务数据。主站 8443 临时服务目前保持运行；以后改变地址、端口或浏览器前仍须先备份。

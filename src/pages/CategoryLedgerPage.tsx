@@ -20,6 +20,6 @@ export function CategoryLedgerPage() {
     <p className="ledger-counts">{statuses.map(value => <span key={value}>{statusNames[value]} {summaries.filter(item => item.asset.lifecycleStatus === value).length} 件</span>)}</p>
     <label>状态筛选<select value={status} onChange={event => setStatus(event.target.value)}><option value="all">全部状态</option>{statuses.map(value => <option key={value} value={value}>{statusNames[value]}</option>)}</select></label>
     <LedgerSummary totals={ledgerTotals(selected)} />
-    {selected.length === 0 ? <div className="empty-state"><p>此账本暂无资产。</p><Link className="button" to="/">返回总览</Link></div> : <ul className="asset-list">{selected.map(item => <li key={item.asset.id}><AssetCard asset={item.asset} category={item.category} costs={item.costs} revenues={item.revenues} today={today} /></li>)}</ul>}
+    {selected.length === 0 ? <div className="empty-state"><p>此账本暂无好物。</p><Link className="button" to="/">返回总览</Link></div> : <ul className="asset-list">{selected.map(item => <li key={item.asset.id}><AssetCard asset={item.asset} category={item.category} costs={item.costs} revenues={item.revenues} today={today} /></li>)}</ul>}
   </section>;
 }

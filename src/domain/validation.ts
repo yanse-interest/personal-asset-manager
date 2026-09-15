@@ -1,6 +1,7 @@
 import { isLocalDate } from './dates';
 import { MAX_AMOUNT_CENTS } from './money';
-import type { Asset, Category, CostRecord, RevenueRecord, LocalDate, LegacyAssetV1 } from './types';
+import type { Asset, AssetV2, Category, CostRecord, RevenueRecord, LocalDate, LegacyAssetV1 } from './types';
+import { isAssetIconId } from './iconCatalog';
 
 export const MAX_RECORDS = 5_000;
 export const MAX_USAGE_COUNT = 2_147_483_647;
@@ -99,7 +100,7 @@ export function validateLegacyAssetV1(value: unknown, today: LocalDate): LegacyA
   return validateLegacyAssetFields(value, today);
 }
 
-export function validateAsset(value: unknown, today: LocalDate): Asset {
+export function validateAssetV2(value: unknown, today: LocalDate): AssetV2 {
   localDate(today, 'today');
   const v = object(value, 'asset');
   exactFields(v, ['id', 'name', 'purchaseCostCents', 'purchaseDate', 'costMode', 'usageCount', 'expiryDate', 'note', 'createdAt', 'updatedAt', 'categoryId', 'lifecycleStatus', 'endedDate'], 'asset');
@@ -111,6 +112,14 @@ export function validateAsset(value: unknown, today: LocalDate): Asset {
   if (v.lifecycleStatus !== 'active' && endedDate === null) throw new Error('asset.endedDate: 已结束资产必须设置结束日期');
   if (endedDate !== null && (endedDate < legacy.purchaseDate || endedDate > today)) throw new Error('asset.endedDate: 必须在购买日至今天之间');
   return { ...legacy, categoryId, lifecycleStatus: v.lifecycleStatus, endedDate };
+}
+
+export function validateAsset(value: unknown, today: LocalDate): Asset {
+  const v = object(value, 'asset');
+  exactFields(v, ['id', 'name', 'purchaseCostCents', 'purchaseDate', 'costMode', 'usageCount', 'expiryDate', 'note', 'createdAt', 'updatedAt', 'categoryId', 'lifecycleStatus', 'endedDate', 'iconId'], 'asset');
+  const legacy = validateAssetV2(Object.fromEntries(Object.entries(v).filter(([key]) => key !== 'iconId')), today);
+  if (v.iconId !== null && !isAssetIconId(v.iconId)) throw new Error('asset.iconId: 未知图标');
+  return { ...legacy, iconId: v.iconId };
 }
 
 export function validateCategory(value: unknown): Category {

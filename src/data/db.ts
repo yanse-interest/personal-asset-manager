@@ -26,6 +26,14 @@ export class AssetDatabase extends Dexie {
         Object.assign(asset, { categoryId: null, lifecycleStatus: 'active', endedDate: null });
       });
     });
+    this.version(3).stores({
+      assets: 'id',
+      categories: 'id, &name',
+      costRecords: 'id, assetId',
+      revenueRecords: 'id, assetId',
+    }).upgrade(async transaction => {
+      await transaction.table<Asset, string>('assets').toCollection().modify(asset => { asset.iconId = null; });
+    });
     this.on('blocked', () => onIssue?.('blocked'));
     this.on('versionchange', () => {
       this.close();

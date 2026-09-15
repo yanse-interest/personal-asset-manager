@@ -1,3 +1,4 @@
+import { testPorts } from './test-ports.mjs';
 import { createServer } from 'node:http';
 import { mkdtemp, mkdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -6,8 +7,7 @@ import { spawn } from 'node:child_process';
 import { build } from 'vite';
 
 const chrome = process.env.CHROME_PATH ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-const webPort = 4178;
-const debugPort = 9228;
+const [webPort, debugPort] = await testPorts();
 const temporaryRoot = await mkdtemp(join(tmpdir(), 'asset-usage-e2e-'));
 const site = join(temporaryRoot, 'site');
 const profile = join(temporaryRoot, 'profile');

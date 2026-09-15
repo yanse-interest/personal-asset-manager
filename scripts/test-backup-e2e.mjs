@@ -1,3 +1,4 @@
+import { testPorts } from './test-ports.mjs';
 import { createServer } from 'node:http';
 import { mkdtemp, mkdir, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -6,8 +7,7 @@ import { spawn } from 'node:child_process';
 import { build } from 'vite';
 
 const chrome = process.env.CHROME_PATH ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-const webPort = 4180;
-const debugPort = 9230;
+const [webPort, debugPort] = await testPorts();
 const root = await mkdtemp(join(tmpdir(), 'asset-backup-e2e-'));
 const site = join(root, 'site');
 const profile = join(root, 'profile');
@@ -54,7 +54,7 @@ async function waitFor(session, expression, label) {
     if (await session.evaluate(expression)) return;
     await delay(100);
   }
-  throw new Error(`${label} 超时`);
+  throw new Error(`${label} 超时：${String(await session.evaluate('document.body?.innerText')).slice(-600)}`);
 }
 async function fixture(role) {
   const session = await openSession(await newPage(fixtureUrl(role)));
@@ -89,11 +89,11 @@ try {
     if (!downloaded) throw new Error('浏览器没有保存 JSON 文件');
     const backupPath = join(downloads, downloaded);
     const saved = JSON.parse(await readFile(backupPath, 'utf8'));
-    if (saved.schemaVersion !== 2 || saved.assets?.length !== 1 || saved.categories?.length !== 1 || saved.costRecords?.length !== 1 || saved.revenueRecords?.length !== 1) throw new Error('下载文件缺少四表记录');
+    if (saved.schemaVersion !== 3 || saved.assets?.length !== 1 || saved.categories?.length !== 1 || saved.costRecords?.length !== 1 || saved.revenueRecords?.length !== 1) throw new Error('下载文件缺少四表记录');
     await fixture('mutate');
     async function chooseDownloadedFile() {
       const documentNode = await app.send('DOM.getDocument');
-      const input = await app.send('DOM.querySelector', { nodeId: documentNode.root.nodeId, selector: 'input[type=file]' });
+      const input = await app.send('DOM.querySelector', { nodeId: documentNode.root.nodeId, selector: 'input[data-import-kind=backup]' });
       if (!input.nodeId) throw new Error('设置页未找到导入文件选择框');
       await app.send('DOM.setFileInputFiles', { nodeId: input.nodeId, files: [backupPath] });
       await waitFor(app, 'document.body.innerText.includes("备份预览")', '备份预览');
@@ -112,14 +112,14 @@ try {
     await app.evaluate('location.hash = "#/ledgers/active"');
     await waitFor(app, 'document.body.innerText.includes("服役中账本") && document.body.innerText.includes("备份测试资产")', '服役中账本');
     await app.evaluate('location.hash = "#/ledgers/retired"');
-    await waitFor(app, 'document.body.innerText.includes("已退役账本") && document.body.innerText.includes("此账本暂无资产")', '空状态账本');
+    await waitFor(app, 'document.body.innerText.includes("已退役账本") && document.body.innerText.includes("此账本暂无好物")', '空状态账本');
     await app.evaluate('location.hash = "#/categories/55555555-5555-4555-8555-555555555555"');
     await waitFor(app, 'document.body.innerText.includes("数码账本") && document.body.innerText.includes("备份测试资产")', '类别账本');
     await app.evaluate('(() => { const select = document.querySelector("select"); const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set; setter.call(select, "sold"); select.dispatchEvent(new Event("change", { bubbles: true })); })()');
-    await waitFor(app, 'document.body.innerText.includes("此账本暂无资产")', '类别状态筛选');
+    await waitFor(app, 'document.body.innerText.includes("此账本暂无好物")', '类别状态筛选');
     await app.evaluate('location.hash = "#/assets/11111111-1111-4111-8111-111111111111/edit"');
-    await waitFor(app, 'document.body.innerText.includes("编辑资产")', 'V2 资产编辑');
-    await app.evaluate('(() => { const select = [...document.querySelectorAll("select")].find(item => item.closest("label")?.textContent?.startsWith("资产状态")); const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set; setter.call(select, "sold"); select.dispatchEvent(new Event("change", { bubbles: true })); })()');
+    await waitFor(app, 'document.body.innerText.includes("编辑好物")', '资产编辑');
+    await app.evaluate('(() => { const select = [...document.querySelectorAll("select")].find(item => item.closest("label")?.textContent?.startsWith("使用状态")); const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set; setter.call(select, "sold"); select.dispatchEvent(new Event("change", { bubbles: true })); })()');
     await waitFor(app, 'document.body.innerText.includes("结束日期")', '结束日期字段');
     await app.evaluate('(() => { const input = [...document.querySelectorAll("input[type=date]")].find(item => item.closest("label")?.textContent?.startsWith("结束日期")); const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set; setter.call(input, "2026-09-13"); input.dispatchEvent(new Event("input", { bubbles: true })); input.dispatchEvent(new Event("change", { bubbles: true })); })()');
     await waitFor(app, 'document.body.innerText.includes("卖价（元，必填）")', '必填卖价字段');
@@ -142,7 +142,7 @@ try {
     await app.evaluate('[...document.querySelectorAll("button")].find(item => item.textContent === "保存名称")?.click()');
     await waitFor(app, 'Boolean([...document.querySelectorAll(".category-management li")].find(item => item.textContent?.includes("厨电")))', '浏览器类别改名');
     await app.evaluate('(() => { const row = [...document.querySelectorAll(".category-management li")].find(item => item.textContent?.includes("数码")); row?.querySelector("button.danger")?.click(); })()');
-    await waitFor(app, 'document.body.innerText.includes("关联 1 件资产将转为未分类")', '删除非空类别确认');
+    await waitFor(app, 'document.body.innerText.includes("关联 1 件好物将转为未分类")', '删除非空类别确认');
     await app.evaluate('[...document.querySelectorAll(".dialog button")].find(item => item.textContent === "删除类别")?.click()');
     await waitFor(app, '!Boolean([...document.querySelectorAll(".category-management li")].find(item => item.textContent?.includes("数码")))', '浏览器删除类别');
     await app.evaluate('location.hash = "#/assets/11111111-1111-4111-8111-111111111111"');
@@ -162,9 +162,9 @@ try {
     await app.evaluate('location.hash = "#/settings"');
     await waitFor(app, 'document.body.innerText.includes("导入 JSON")', '旧版备份入口');
     const oldDocument = await app.send('DOM.getDocument');
-    const oldInput = await app.send('DOM.querySelector', { nodeId: oldDocument.root.nodeId, selector: 'input[type=file]' });
+    const oldInput = await app.send('DOM.querySelector', { nodeId: oldDocument.root.nodeId, selector: 'input[data-import-kind=backup]' });
     await app.send('DOM.setFileInputFiles', { nodeId: oldInput.nodeId, files: [resolve('tests/fixtures/backups/v1-sample.json')] });
-    await waitFor(app, 'document.body.innerText.includes("旧版备份：导入后所有资产默认为服役中、未分类")', 'v1 预览映射');
+    await waitFor(app, 'document.body.innerText.includes("旧版备份：导入后所有好物默认为服役中、未分类")', 'v1 预览映射');
     await app.evaluate('[...document.querySelectorAll("button")].find(item => item.textContent?.includes("覆盖当前数据"))?.click()');
     await waitFor(app, 'document.body.innerText.includes("覆盖全部本地数据？")', 'v1 覆盖确认');
     await app.evaluate('[...document.querySelectorAll(".dialog button")].find(item => item.textContent === "确认替换")?.click()');

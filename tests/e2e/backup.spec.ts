@@ -6,7 +6,7 @@ const role = params.get('role');
 const result = document.querySelector('#result')!;
 const timestamp = '2026-09-13T08:00:00.000Z';
 const category: Category = { id: '55555555-5555-4555-8555-555555555555', name: '数码', createdAt: timestamp, updatedAt: timestamp };
-const asset: Asset = { id: '11111111-1111-4111-8111-111111111111', name: '备份测试资产', purchaseCostCents: 100_000, purchaseDate: '2026-09-13', costMode: 'use', usageCount: 3, expiryDate: null, note: '备注 😀', createdAt: timestamp, updatedAt: timestamp, categoryId: category.id, lifecycleStatus: 'active', endedDate: null };
+const asset: Asset = { id: '11111111-1111-4111-8111-111111111111', name: '备份测试资产', purchaseCostCents: 100_000, purchaseDate: '2026-09-13', costMode: 'use', usageCount: 3, expiryDate: null, note: '备注 😀', createdAt: timestamp, updatedAt: timestamp, categoryId: category.id, lifecycleStatus: 'active', endedDate: null, iconId: null };
 const cost: CostRecord = { id: '22222222-2222-4222-8222-222222222222', assetId: asset.id, kind: 'consumable', amountCents: 500, date: '2026-09-13', note: '咖啡豆', createdAt: timestamp, updatedAt: timestamp };
 const revenue: RevenueRecord = { id: '33333333-3333-4333-8333-333333333333', assetId: asset.id, amountCents: 100, date: '2026-09-13', note: null, createdAt: timestamp, updatedAt: timestamp };
 
