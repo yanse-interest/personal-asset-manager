@@ -35,7 +35,7 @@ npm run verify
 
 每台设备的数据只保存在该设备、该浏览器和该网址对应的 IndexedDB 中，用户之间不会共享数据。换手机、换浏览器、清除网站数据或卸载前，应先在“设置与数据”导出 JSON 备份。若要把现有资产交给另一位用户，可由原设备导出 JSON，再由对方设备导入。后续版本应始终发布到同一网址，以便原地更新并保留现有数据。
 
-应用标志采用暖陶橙色的连续丝带造型，表达物品被长久使用与珍惜。网页页签和页头使用 `public/icon.svg`；主屏幕图标使用 `public/jiuyong-192.png`、`public/jiuyong-512.png`、`public/jiuyong-maskable-512.png` 与 `public/jiuyong-apple-touch-icon.png`。以后更换标志时同时替换这些文件，必要时更换文件名并同步 `vite.config.ts`、`index.html`，以减少已安装图标继续使用旧缓存的情况。
+应用标志采用苔绿色的收纳标签与持续勾环，表达物品被妥善记录、珍惜和长久使用；陶橙色圆点代表一条新的使用记录。网页页签和页头使用 `public/icon-v2.svg`；主屏幕图标使用 `public/jiuyong-v2-192.png`、`public/jiuyong-v2-512.png`、`public/jiuyong-v2-maskable-512.png` 与 `public/jiuyong-v2-apple-touch-icon.png`。以后更换标志时同时替换这些文件，必要时更换文件名并同步 `vite.config.ts`、`index.html`，以减少已安装图标继续使用旧缓存的情况。
 
 ## Android Chrome 临时局域网安装
 

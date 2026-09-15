@@ -24,7 +24,7 @@ export function App() {
   return (
     <PwaProvider><main className="app-shell">
       <header className="app-header">
-        <Link className="brand" to="/"><img src={`${import.meta.env.BASE_URL}icon.svg`} width="37" height="37" alt=""/><span><strong>久用</strong><small>把日常的陪伴记下来</small></span></Link>
+        <Link className="brand" to="/"><img src={`${import.meta.env.BASE_URL}icon-v2.svg`} width="37" height="37" alt=""/><span><strong>久用</strong><small>把日常的陪伴记下来</small></span></Link>
         {location.pathname !== '/settings' && <Link className="header-action" to="/settings" aria-label="打开设置"><AppIcon name="settings" /></Link>}
       </header>
       {databaseError && <div role="alert"><p>{databaseError}</p><button type="button" onClick={() => window.location.reload()}>刷新重试</button></div>}

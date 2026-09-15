@@ -9,7 +9,7 @@ export default defineConfig({
     VitePWA({
       strategies: 'generateSW',
       registerType: 'prompt',
-      includeAssets: ['icon.svg', 'jiuyong-apple-touch-icon.png'],
+      includeAssets: ['icon-v2.svg', 'jiuyong-v2-apple-touch-icon.png'],
       manifest: {
         id: './',
         lang: 'zh-CN',
@@ -22,9 +22,9 @@ export default defineConfig({
         background_color: '#f3f3f1',
         theme_color: '#f3f3f1',
         icons: [
-          { src: 'jiuyong-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-          { src: 'jiuyong-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-          { src: 'jiuyong-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'jiuyong-v2-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'jiuyong-v2-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: 'jiuyong-v2-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {
