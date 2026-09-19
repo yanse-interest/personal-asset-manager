@@ -85,10 +85,8 @@ h1, h2, h3 { line-height: 1.2; }
 .status-facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
 .asset-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 2px 4px -6px; }
 .asset-section-heading h1 { margin: 0; font-size: 21px; }
-.asset-section-heading > div { display: flex; align-items: center; gap: 7px; }
-.asset-section-heading > div > span { color: var(--muted); font-size: 10px; }
-.status-select { display: flex; align-items: center; gap: 2px; min-height: 38px; padding: 0 5px 0 10px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface); }
-.status-select select { width: 88px; min-height: 36px; border: 0; outline: 0; background: transparent; color: var(--muted); font-size: 10px; }
+.asset-section-heading > span { color: var(--muted); font-size: 10px; }
+.list-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .asset-list { display: grid; gap: 11px; margin: 0; padding: 0; list-style: none; }
 .asset-card { position: relative; display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 13px; min-height: 145px; padding: 16px; border-radius: 26px; background: var(--surface); }
 .asset-visual { display: grid; place-items: center; width: 92px; height: 92px; align-self: center; border-radius: 23px; background: var(--surface-2); text-decoration: none; }
@@ -180,7 +178,7 @@ h1, h2, h3 { line-height: 1.2; }
 .icon-picker-empty { color: var(--muted); font-size: 12px; text-align: center; }
 .button-row { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 form { display: grid; gap: 14px; padding: 18px; border-radius: 25px; background: var(--surface); }
-label:not(.inline):not(.status-select):not(.backup-file-label) { display: grid; gap: 6px; color: var(--muted); font-size: 10px; font-weight: 650; }
+label:not(.inline):not(.backup-file-label) { display: grid; gap: 6px; color: var(--muted); font-size: 10px; font-weight: 650; }
 input, textarea, select { width: 100%; min-height: 47px; padding: 11px 13px; border: 1px solid var(--line); border-radius: 15px; outline: 0; background: var(--canvas); color: var(--ink); font-size: 13px; }
 input:focus, textarea:focus, select:focus { border-color: var(--accent); }
 textarea { min-height: 105px; resize: vertical; }

@@ -4,6 +4,7 @@ import type { Asset, Category, CostRecord, LifecycleStatus, RevenueRecord } from
 export interface LedgerFacts { assets: Asset[]; categories: Category[]; costs: CostRecord[]; revenues: RevenueRecord[] }
 export interface AssetSummary { asset: Asset; category: Category | null; costs: CostRecord[]; revenues: RevenueRecord[]; values: AssetCosts }
 export interface LedgerTotals { count: number; totalCostCents: number; revenueCents: number; netCostCents: number }
+export type AssetSort = 'default' | 'day-desc' | 'day-asc' | 'use-desc' | 'use-asc';
 const add = (a: number, b: number) => { const value = a + b; if (!Number.isSafeInteger(value)) throw new Error('金额合计超出安全整数范围'); return value; };
 export const statusNames: Record<LifecycleStatus, string> = { active: '服役中', retired: '已退役', sold: '已卖出' };
 export const statuses: LifecycleStatus[] = ['active', 'retired', 'sold'];
@@ -22,4 +23,22 @@ export function summarizeAssets(facts: LedgerFacts, today: string): AssetSummary
 
 export function ledgerTotals(items: readonly AssetSummary[]): LedgerTotals {
   return items.reduce((sum, item) => ({ count: sum.count + 1, totalCostCents: add(sum.totalCostCents, item.values.totalCostCents), revenueCents: add(sum.revenueCents, item.values.revenueCents), netCostCents: add(sum.netCostCents, item.values.netCostCents) }), { count: 0, totalCostCents: 0, revenueCents: 0, netCostCents: 0 });
+}
+
+export function sortAssetSummaries(items: readonly AssetSummary[], sort: AssetSort): AssetSummary[] {
+  if (sort === 'default') return [...items];
+  const byUse = sort.startsWith('use-');
+  const descending = sort.endsWith('-desc');
+  const matchingMode = items.filter(item => item.asset.costMode === (byUse ? 'use' : 'day'));
+  return matchingMode.sort((left, right) => {
+    const leftRatio = byUse ? left.values.costPerUse : left.values.costPerDay;
+    const rightRatio = byUse ? right.values.costPerUse : right.values.costPerDay;
+    if (leftRatio === null) return rightRatio === null ? 0 : 1;
+    if (rightRatio === null) return -1;
+    const difference = BigInt(leftRatio.numeratorCents) * BigInt(rightRatio.denominator)
+      - BigInt(rightRatio.numeratorCents) * BigInt(leftRatio.denominator);
+    if (difference === 0n) return 0;
+    const order = difference < 0n ? -1 : 1;
+    return descending ? -order : order;
+  });
 }
