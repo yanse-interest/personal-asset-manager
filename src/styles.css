@@ -184,6 +184,9 @@ label:not(.inline):not(.status-select):not(.backup-file-label) { display: grid; 
 input, textarea, select { width: 100%; min-height: 47px; padding: 11px 13px; border: 1px solid var(--line); border-radius: 15px; outline: 0; background: var(--canvas); color: var(--ink); font-size: 13px; }
 input:focus, textarea:focus, select:focus { border-color: var(--accent); }
 textarea { min-height: 105px; resize: vertical; }
+.date-field { display: grid; gap: 6px; }
+.date-field small { color: var(--muted); font-size: 9px; }
+.date-clear { justify-self: end; min-height: 36px; padding: 6px 10px; border: 0; background: var(--surface-2); color: var(--muted); font-size: 10px; }
 fieldset { padding: 12px; border: 1px solid var(--line); border-radius: 16px; }
 legend { padding: 0 5px; color: var(--muted); font-size: 10px; }
 .inline { display: inline-flex; align-items: center; gap: 6px; margin-right: 16px; font-size: 11px; }
