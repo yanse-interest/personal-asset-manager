@@ -4,6 +4,7 @@ import type { Asset, Category, CostRecord, LifecycleStatus, RevenueRecord } from
 export interface LedgerFacts { assets: Asset[]; categories: Category[]; costs: CostRecord[]; revenues: RevenueRecord[] }
 export interface AssetSummary { asset: Asset; category: Category | null; costs: CostRecord[]; revenues: RevenueRecord[]; values: AssetCosts }
 export interface LedgerTotals { count: number; totalCostCents: number; revenueCents: number; netCostCents: number }
+export interface CategoryInsight { id: string; name: string; count: number; activeCount: number; longest: AssetSummary; totals: LedgerTotals }
 export type AssetSort = 'default' | 'day-desc' | 'day-asc' | 'use-desc' | 'use-asc';
 const add = (a: number, b: number) => { const value = a + b; if (!Number.isSafeInteger(value)) throw new Error('金额合计超出安全整数范围'); return value; };
 export const statusNames: Record<LifecycleStatus, string> = { active: '服役中', retired: '已退役', sold: '已卖出' };
@@ -41,4 +42,24 @@ export function sortAssetSummaries(items: readonly AssetSummary[], sort: AssetSo
     const order = difference < 0n ? -1 : 1;
     return descending ? -order : order;
   });
+}
+
+export function longestAssetSummaries(items: readonly AssetSummary[], limit = 3): AssetSummary[] {
+  return [...items]
+    .sort((left, right) => right.values.serviceDays - left.values.serviceDays || left.asset.purchaseDate.localeCompare(right.asset.purchaseDate) || left.asset.id.localeCompare(right.asset.id))
+    .slice(0, limit);
+}
+
+export function categoryInsights(categories: readonly Category[], items: readonly AssetSummary[]): CategoryInsight[] {
+  const groups = sortedCategories(categories).map(category => ({ id: category.id, name: category.name, items: items.filter(item => item.asset.categoryId === category.id) }));
+  const uncategorized = items.filter(item => item.asset.categoryId === null);
+  if (uncategorized.length > 0) groups.push({ id: 'uncategorized', name: '未分类', items: uncategorized });
+  return groups.filter(group => group.items.length > 0).map(group => ({
+    id: group.id,
+    name: group.name,
+    count: group.items.length,
+    activeCount: group.items.filter(item => item.asset.lifecycleStatus === 'active').length,
+    longest: longestAssetSummaries(group.items, 1)[0]!,
+    totals: ledgerTotals(group.items),
+  })).sort((left, right) => right.count - left.count || left.name.localeCompare(right.name, 'zh-CN') || left.id.localeCompare(right.id));
 }
