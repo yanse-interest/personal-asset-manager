@@ -44,6 +44,10 @@ export function sortAssetSummaries(items: readonly AssetSummary[], sort: AssetSo
   });
 }
 
+export function valueRankingCandidates(items: readonly AssetSummary[]): AssetSummary[] {
+  return items.filter(item => item.asset.lifecycleStatus === 'active' || item.asset.endedDate === null || item.asset.endedDate !== item.asset.purchaseDate);
+}
+
 export function longestAssetSummaries(items: readonly AssetSummary[], limit = 3): AssetSummary[] {
   return [...items]
     .sort((left, right) => right.values.serviceDays - left.values.serviceDays || left.asset.purchaseDate.localeCompare(right.asset.purchaseDate) || left.asset.id.localeCompare(right.asset.id))

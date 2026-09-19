@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryInsights, ledgerTotals, longestAssetSummaries, sortAssetSummaries, statuses, summarizeAssets } from './ledgers';
+import { categoryInsights, ledgerTotals, longestAssetSummaries, sortAssetSummaries, statuses, summarizeAssets, valueRankingCandidates } from './ledgers';
 import type { Asset, Category, CostRecord, RevenueRecord } from './types';
 
 const timestamp = '2026-09-13T08:00:00.000Z';
@@ -41,5 +41,12 @@ describe('ledger partitions', () => {
     expect(insights[0]).toMatchObject({ id: 'uncategorized', count: 2, activeCount: 0, totals: { totalCostCents: 50_500, revenueCents: 35_000, netCostCents: 15_500 } });
     expect(insights[0]?.longest.asset.id).toBe(ids[1]);
     expect(insights[1]).toMatchObject({ id: category.id, count: 1, activeCount: 1, totals: { netCostCents: 10_000 } });
+  });
+
+  it('excludes same-day retired and sold assets from value rankings', () => {
+    const summaries = summarizeAssets({ assets, categories: [category], costs, revenues }, '2026-09-15');
+    expect(valueRankingCandidates(summaries).map(item => item.asset.id)).toEqual([ids[0]]);
+    const retiredWithoutDate = summaries.map(item => item.asset.id === ids[1] ? { ...item, asset: { ...item.asset, endedDate: null } } : item);
+    expect(valueRankingCandidates(retiredWithoutDate).map(item => item.asset.id)).toEqual([ids[0], ids[1]]);
   });
 });

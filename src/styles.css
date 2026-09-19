@@ -141,6 +141,7 @@ h1, h2, h3 { line-height: 1.2; }
 .stats-metric-grid small, .stats-note { color: var(--muted); font-size: 9px; }
 .stats-metric-grid strong { overflow-wrap: anywhere; font-size: 13px; font-variant-numeric: tabular-nums; }
 .stats-note { margin: -2px 2px 0 !important; line-height: 1.7; }
+.stats-rule { color: var(--muted); font-size: 9px; }
 .ranking-list { display: grid; gap: 13px; }
 .ranking-row { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center; gap: 10px; }
 .ranking-row > span { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 14px; background: var(--surface-2); font-size: 23px; }

@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router';
 import { AssetIcon } from '../components/AssetIcon';
 import { getDashboardSnapshot } from '../data/queries';
-import { categoryInsights, ledgerTotals, longestAssetSummaries, sortAssetSummaries, summarizeAssets } from '../domain/ledgers';
+import { categoryInsights, ledgerTotals, longestAssetSummaries, sortAssetSummaries, summarizeAssets, valueRankingCandidates } from '../domain/ledgers';
 import { formatCents, formatRatio } from '../domain/money';
 import { useToday } from '../hooks/useToday';
 
@@ -25,8 +25,9 @@ export function StatsPage() {
   const useItems = summaries.filter(item => item.asset.costMode === 'use');
   const totalUsage = useItems.reduce((sum, item) => sum + item.asset.usageCount, 0);
   const mostUsed = [...useItems].sort((left, right) => right.asset.usageCount - left.asset.usageCount || left.asset.id.localeCompare(right.asset.id))[0];
-  const bestDay = sortAssetSummaries(summaries, 'day-asc')[0];
-  const bestUse = sortAssetSummaries(summaries, 'use-asc').find(item => item.values.costPerUse !== null);
+  const valueCandidates = valueRankingCandidates(summaries);
+  const bestDay = sortAssetSummaries(valueCandidates, 'day-asc')[0];
+  const bestUse = sortAssetSummaries(valueCandidates, 'use-asc').find(item => item.values.costPerUse !== null);
   const longest = longestAssetSummaries(summaries, 5);
   const categories = categoryInsights(result.snapshot.categories, summaries);
   const maxCategoryCount = Math.max(1, ...categories.map(category => category.count));
@@ -40,7 +41,7 @@ export function StatsPage() {
 
     <div className="stats-card"><h2>陪伴与使用</h2><div className="stats-metric-grid"><div><small>平均陪伴</small><strong>{averageDays.toLocaleString('zh-CN')} 天</strong></div><div><small>累计陪伴</small><strong>{totalServiceDays.toLocaleString('zh-CN')} 天</strong></div><div><small>按日观察</small><strong>{dayItems.length} 件</strong></div><div><small>按次观察</small><strong>{useItems.length} 件</strong></div></div>{useItems.length > 0 && <p className="stats-note">按次好物累计记录 {totalUsage.toLocaleString('zh-CN')} 次{mostUsed && mostUsed.asset.usageCount > 0 ? `；使用最多的是“${mostUsed.asset.name}”，共 ${mostUsed.asset.usageCount.toLocaleString('zh-CN')} 次。` : '。'}</p>}</div>
 
-    <div className="stats-card"><h2>当前低成本代表</h2>{!bestDay && !bestUse ? <p>还没有可比较的成本数据。</p> : <div className="value-leaders">{bestDay && <Link to="/?sort=day-asc"><span><AssetIcon id={bestDay.asset.iconId} name={bestDay.asset.name} categoryName={bestDay.category?.name} size={30}/></span><div><small>日均最低</small><strong>{bestDay.asset.name}</strong></div><b>{formatRatio(bestDay.values.costPerDay.numeratorCents, bestDay.values.costPerDay.denominator)} / 天</b></Link>}{bestUse?.values.costPerUse && <Link to="/?sort=use-asc"><span><AssetIcon id={bestUse.asset.iconId} name={bestUse.asset.name} categoryName={bestUse.category?.name} size={30}/></span><div><small>次均最低</small><strong>{bestUse.asset.name}</strong></div><b>{formatRatio(bestUse.values.costPerUse.numeratorCents, bestUse.values.costPerUse.denominator)} / 次</b></Link>}</div>}</div>
+    <div className="stats-card"><h2>当前低成本代表</h2>{!bestDay && !bestUse ? <p>还没有可比较的成本数据。</p> : <div className="value-leaders">{bestDay && <Link to="/?sort=day-asc"><span><AssetIcon id={bestDay.asset.iconId} name={bestDay.asset.name} categoryName={bestDay.category?.name} size={30}/></span><div><small>日均最低</small><strong>{bestDay.asset.name}</strong></div><b>{formatRatio(bestDay.values.costPerDay.numeratorCents, bestDay.values.costPerDay.denominator)} / 天</b></Link>}{bestUse?.values.costPerUse && <Link to="/?sort=use-asc"><span><AssetIcon id={bestUse.asset.iconId} name={bestUse.asset.name} categoryName={bestUse.category?.name} size={30}/></span><div><small>次均最低</small><strong>{bestUse.asset.name}</strong></div><b>{formatRatio(bestUse.values.costPerUse.numeratorCents, bestUse.values.costPerUse.denominator)} / 次</b></Link>}</div>}<small className="stats-rule">当天购入并退役或卖出的好物不参与评选。</small></div>
 
     <div className="stats-card"><h2>陪伴最久</h2>{longest.length === 0 ? <p>还没有好物数据。</p> : <div className="ranking-list">{longest.map((item, index) => <div className="ranking-row" key={item.asset.id}><span><AssetIcon id={item.asset.iconId} name={item.asset.name} categoryName={item.category?.name} size={30}/></span><div><strong>{index + 1}. {item.asset.name}</strong><small>{item.category?.name ?? '未分类'} · {item.asset.lifecycleStatus === 'active' ? '仍在使用' : item.asset.lifecycleStatus === 'retired' ? '已退役' : '已卖出'}</small></div><b>{item.values.serviceDays.toLocaleString('zh-CN')} 天</b></div>)}</div>}</div>
 
