@@ -2,7 +2,7 @@
 
 状态：V2 Phase 1–5 本地实现/自动化及 Android Chrome 主要真机链路已完成；主屏幕独立窗口、数据共享和安装态离线冷启动已通过，安装态离线写入及旧标签阻塞升级等边界仍待核对。需求来源：2026-09-14 用户新增要求及真机验收时对卖价必填的补充；本文件定义 V2 增量。现有 MVP 的未变规则继续以 TECH_SPEC.md、DATA_MODEL.md、UI_STRUCTURE.md、IMPLEMENTATION_PLAN.md、ACCEPTANCE_CRITERIA.md 为准。
 
-用户已确认：同时需要三个状态账本与可自定义类别；卖出金额沿用现有收益流水。2026-09-14 真机验收中进一步确认：新建已卖出资产或从其他状态转为已卖出时，必须在资产表单填写大于 0 元的卖价，保存时与状态原子写入一条“出售”收益；再次编辑已卖出资产不重复写入。退役/卖出日期停止按天成本分母；类别在设置页统一增删改，删除类别时资产转为“未分类”。
+用户已确认：同时需要三个状态账本与可自定义类别；卖出金额沿用现有收益流水。2026-09-14 真机验收中进一步确认：新建已卖出资产或从其他状态转为已卖出时，必须在资产表单填写大于 0 元的卖价，保存时与状态原子写入一条“出售”收益；再次编辑已卖出资产不重复写入。已填写的退役/卖出日期停止按天成本分母；退役日期可留空，留空时按天指标继续计算到今天；类别在设置页统一增删改，删除类别时资产转为“未分类”。
 
 ## 1. 产品边界与账本口径
 
@@ -20,7 +20,7 @@
 | --- | --- | --- |
 | Asset | `categoryId` | UUID v4 字符串或 null；null 表示“未分类”，非 null 必须引用 Category.id |
 | Asset | `lifecycleStatus` | `'active' \| 'retired' \| 'sold'`；中文分别为服役中/已退役/已卖出，新建默认 active |
-| Asset | `endedDate` | LocalDate 或 null；active 必须 null，retired/sold 必须为 purchaseDate 至 today（含端点）的真实日期 |
+| Asset | `endedDate` | LocalDate 或 null；active 必须 null，retired 可为 null，sold 必须为 purchaseDate 至 today（含端点）的真实日期 |
 | Category | `id` | UUID v4，主键，不可编辑 |
 | Category | `name` | 首尾 trim 后 1–40 Unicode code points；同名（trim 后完全相同）禁止，大小写不自动合并 |
 | Category | `createdAt` / `updatedAt` | Instant；改名只更新 Category.updatedAt |
@@ -38,13 +38,13 @@ Category 最多 100 条，不计入原有资产+成本+收益 5,000 条限额。
 ```text
 totalCost = purchaseCost + additionalCost + consumableCost
 netCost = totalCost - revenue
-serviceEnd = lifecycleStatus == active ? today : endedDate
+serviceEnd = lifecycleStatus == active || endedDate == null ? today : endedDate
 serviceDays = max(1, calendarOrdinal(serviceEnd) - calendarOrdinal(purchaseDate) + 1)
 costPerDay = netCost / serviceDays
 costPerUse = usageCount > 0 ? netCost / usageCount : null
 ```
 
-`serviceDays` 是 V2 展示的“计费天数”：active 随本地今天变化，retired/sold 在 endedDate 停止；购买当天结束仍为 1 天。已有 v1 的 `daysOwned` 是未结束状态下的旧观察口径，V2 页面改称“计费天数”，避免把已卖出资产描述为仍在持有。系统时钟回拨使今天早于 purchaseDate 的显示保护仍适用；若今天早于已存 endedDate，也提示设备时钟异常，展示时分母至少为 1，不改库。结束后补录成本/收益会改变分子，但不会让分母重新增长；使用次数更正仍会改变按次指标。
+`serviceDays` 是 V2 展示的“计费天数”：active 随本地今天变化；retired 在填写 endedDate 后冻结，未填写时继续计算到今天；sold 在 endedDate 停止。购买当天结束仍为 1 天。已有 v1 的 `daysOwned` 是未结束状态下的旧观察口径，V2 页面改称“计费天数”，避免把已卖出资产描述为仍在持有。系统时钟回拨使今天早于 purchaseDate 的显示保护仍适用；若今天早于已存 endedDate，也提示设备时钟异常，展示时分母至少为 1，不改库。结束后补录成本/收益会改变分子，但不会让分母重新增长；使用次数更正仍会改变按次指标。
 
 只有 `lifecycleStatus=active && costMode=use` 才显示并允许“+ 使用一次”；事务内重新确认这两个条件，退役/卖出后两个标签的旧按钮也不能继续计次。已结束资产仍可更正历史使用次数和编辑原始记录；当 usageCount=0 仍显示“— / 暂无使用记录”。按天/按次模式切换保留次数。状态、类别、日期、金额、次数和汇总均不持久化派生 totals。
 

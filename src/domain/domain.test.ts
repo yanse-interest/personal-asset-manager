@@ -91,6 +91,7 @@ describe('cost calculations', () => {
     const ended = { ...asset, lifecycleStatus: 'sold' as const, endedDate: '2026-09-13' };
     expect(calculateAssetCosts(ended, costs, revenues, '2026-09-14')).toMatchObject({ serviceDays: 1, netCostCents: 140_000 });
     expect(calculateAssetCosts({ ...ended, endedDate: '2026-09-14' }, costs, revenues, '2026-09-15').serviceDays).toBe(2);
+    expect(calculateAssetCosts({ ...ended, lifecycleStatus: 'retired', endedDate: null }, costs, revenues, '2026-09-15').serviceDays).toBe(3);
     expect(calculateAssetCosts({ ...ended, lifecycleStatus: 'active', endedDate: null }, costs, revenues, '2026-09-15').serviceDays).toBe(3);
     expect(calculateAssetCosts({ ...ended, endedDate: '2026-09-14' }, costs, revenues, '2026-09-13').clockBeforePurchase).toBe(true);
   });
@@ -114,10 +115,11 @@ describe('model validation', () => {
     expect(() => validateCostRecord({ ...costs[0], amountCents: 0 }, '2026-09-13', '2026-09-13')).toThrow('costRecord.amountCents');
     expect(() => validateRevenueRecord({ ...revenues[0], amountCents: '100' }, '2026-09-13', '2026-09-13')).toThrow('revenueRecord.amountCents');
   });
-  it('requires paired lifecycle status and end date inside the purchase-to-today range', () => {
+  it('allows retired assets without an end date while requiring sold dates', () => {
     expect(() => validateAsset({ ...asset, lifecycleStatus: 'sold', endedDate: null }, '2026-09-13')).toThrow('asset.endedDate');
     expect(() => validateAsset({ ...asset, lifecycleStatus: 'active', endedDate: '2026-09-13' }, '2026-09-13')).toThrow('asset.endedDate');
     expect(() => validateAsset({ ...asset, lifecycleStatus: 'retired', endedDate: '2026-09-12' }, '2026-09-13')).toThrow('asset.endedDate');
+    expect(validateAsset({ ...asset, lifecycleStatus: 'retired', endedDate: null }, '2026-09-13').endedDate).toBeNull();
     expect(validateAsset({ ...asset, lifecycleStatus: 'sold', endedDate: '2026-09-13' }, '2026-09-13').endedDate).toBe('2026-09-13');
   });
 });

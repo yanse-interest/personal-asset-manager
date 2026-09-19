@@ -113,6 +113,12 @@ describe('usage count writes', () => {
     expect(await database.revenueRecords.count()).toBe(1);
   });
 
+  it('allows retiring without an end date', async () => {
+    const created = await createAsset(input, database, now);
+    const retired = await updateAsset(created.id, created, { ...input, lifecycleStatus: 'retired', endedDate: null }, database, now);
+    expect(retired).toMatchObject({ lifecycleStatus: 'retired', endedDate: null });
+  });
+
   it('creates a sold asset and sale revenue atomically, including failure rollback', async () => {
     await expect(createAsset({ ...input, lifecycleStatus: 'sold', endedDate: '2026-09-13' }, database, now)).rejects.toThrow('卖价必须填写');
     expect(await database.assets.count()).toBe(0);

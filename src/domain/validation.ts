@@ -109,7 +109,7 @@ export function validateAssetV2(value: unknown, today: LocalDate): AssetV2 {
   if (v.lifecycleStatus !== 'active' && v.lifecycleStatus !== 'retired' && v.lifecycleStatus !== 'sold') throw new Error('asset.lifecycleStatus: 未知资产状态');
   const endedDate = v.endedDate === null ? null : localDate(v.endedDate, 'asset.endedDate');
   if (v.lifecycleStatus === 'active' && endedDate !== null) throw new Error('asset.endedDate: 服役中资产不得设置结束日期');
-  if (v.lifecycleStatus !== 'active' && endedDate === null) throw new Error('asset.endedDate: 已结束资产必须设置结束日期');
+  if (v.lifecycleStatus === 'sold' && endedDate === null) throw new Error('asset.endedDate: 已卖出资产必须设置结束日期');
   if (endedDate !== null && (endedDate < legacy.purchaseDate || endedDate > today)) throw new Error('asset.endedDate: 必须在购买日至今天之间');
   return { ...legacy, categoryId, lifecycleStatus: v.lifecycleStatus, endedDate };
 }

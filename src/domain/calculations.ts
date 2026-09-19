@@ -43,7 +43,7 @@ export function calculateAssetCosts(
   }
   const totalCostCents = safeAdd(safeAdd(asset.purchaseCostCents, additionalCostCents), consumableCostCents);
   const netCostCents = safeAdd(totalCostCents, -revenueCents);
-  const serviceEnd = asset.lifecycleStatus === 'active' ? today : asset.endedDate!;
+  const serviceEnd = asset.lifecycleStatus === 'active' || asset.endedDate === null ? today : asset.endedDate;
   const owned = daysOwned(asset.purchaseDate, serviceEnd);
   return {
     purchaseCostCents: asset.purchaseCostCents,
