@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
+import { listNavigationState } from '../app/listNavigation';
 import { incrementUsage } from '../data/assets';
 import { calculateAssetCosts } from '../domain/calculations';
 import { formatCents, formatRatio } from '../domain/money';
@@ -9,6 +10,8 @@ import { AssetIcon } from './AssetIcon';
 
 const statusLabel = { active: '服役中', retired: '已退役', sold: '已卖出' };
 export function AssetCard({ asset, category, costs, revenues, today }: { asset: Asset; category?: Category | null; costs: CostRecord[]; revenues: RevenueRecord[]; today: string }) {
+  const location = useLocation();
+  const navigationState = listNavigationState(location.pathname, location.search);
   const values = calculateAssetCosts(asset, costs, revenues, today);
   const [incrementing, setIncrementing] = useState(false);
   const incrementWriting = useRef(false);
@@ -26,8 +29,8 @@ export function AssetCard({ asset, category, costs, revenues, today }: { asset: 
     finally { incrementWriting.current = false; setIncrementing(false); }
   }
   return <article className="asset-card" data-pwa-busy={incrementing ? 'true' : undefined}>
-    <Link className="asset-visual" to={`/assets/${asset.id}`} aria-label={`查看 ${asset.name}`}><AssetIcon id={asset.iconId} name={asset.name} categoryName={category?.name} size={52}/></Link>
-    <Link className="asset-card-link" to={`/assets/${asset.id}`}>
+    <Link className="asset-visual" to={`/assets/${asset.id}`} state={navigationState} aria-label={`查看 ${asset.name}`}><AssetIcon id={asset.iconId} name={asset.name} categoryName={category?.name} size={52}/></Link>
+    <Link className="asset-card-link" to={`/assets/${asset.id}`} state={navigationState}>
       <strong className="asset-name">{asset.name}</strong>
       <span className={`asset-status ${asset.lifecycleStatus}`}>{statusLabel[asset.lifecycleStatus]}</span>
       <small className="asset-meta">购入 {formatCents(asset.purchaseCostCents)} · {asset.costMode === 'use' ? `累计 ${asset.usageCount.toLocaleString('zh-CN')} 次` : `${asset.lifecycleStatus === 'active' ? '已陪伴' : '共陪伴'} ${values.serviceDays.toLocaleString('zh-CN')} 天`}</small>

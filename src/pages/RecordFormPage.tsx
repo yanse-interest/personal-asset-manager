@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link, useBlocker, useNavigate, useParams, useSearchParams } from 'react-router';
+import { Link, useBlocker, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
+import { readListPath } from '../app/listNavigation';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { getAsset } from '../data/assets';
@@ -18,7 +19,8 @@ export function RecordFormPage({ table }: { table?: 'cost' | 'revenue' }) {
 }
 
 function RecordForm({ table }: { table?: 'cost' | 'revenue' }) {
-  const { assetId = '', recordId = '' } = useParams(); const [params] = useSearchParams(); const navigate = useNavigate();
+  const { assetId = '', recordId = '' } = useParams(); const [params] = useSearchParams(); const navigate = useNavigate(); const location = useLocation();
+  const navigationState = { listPath: readListPath(location.state) };
   const editing = Boolean(table && recordId); const requested = validType(params.get('type')) ? params.get('type') as RecordType : 'additional';
   const [asset, setAsset] = useState<Asset | null>(null); const [source, setSource] = useState<RecordSnapshot | null>(null);
   const [draft, setDraft] = useState<Draft>({ type: requested, amount: '', date: localToday(), note: '' });
@@ -55,25 +57,25 @@ function RecordForm({ table }: { table?: 'cost' | 'revenue' }) {
       else if (source?.table === 'cost' && draft.type !== 'revenue') await updateCostRecord(assetId, source.record, { ...input, type: draft.type });
       else if (source?.table === 'revenue') await updateRevenueRecord(assetId, source.record, input);
       else throw new Error('流水类型无效');
-      savedRef.current = true; setDirty(false); navigate(`/assets/${assetId}`, { replace: true });
+      savedRef.current = true; setDirty(false); navigate(`/assets/${assetId}`, { replace: true, state: navigationState });
     } catch (reason) { setError(reason instanceof Error ? reason.message : '保存失败，请重试。'); } finally { busyRef.current = false; setBusy(false); }
   }
   async function remove() {
     if (!source || busyRef.current) return; busyRef.current = true; setBusy(true); setError(null);
-    try { await deleteRecord(source); savedRef.current = true; setDirty(false); navigate(`/assets/${assetId}`, { replace: true }); }
+    try { await deleteRecord(source); savedRef.current = true; setDirty(false); navigate(`/assets/${assetId}`, { replace: true, state: navigationState }); }
     catch (reason) { setConfirmDelete(false); setError(reason instanceof Error ? reason.message : '删除失败，请重试。'); }
     finally { busyRef.current = false; setBusy(false); }
   }
   if (!loaded) return <section><p>正在加载…</p></section>;
   if (loadError) return <section><ErrorMessage>{loadError}</ErrorMessage><button onClick={() => window.location.reload()}>重试</button><Link to="/">返回首页</Link></section>;
-  if (missing || !asset) return <section><h1>记录不存在或已删除</h1><Link to={assetId ? `/assets/${assetId}` : '/'}>返回</Link></section>;
+  if (missing || !asset) return <section><h1>记录不存在或已删除</h1><Link to={assetId ? `/assets/${assetId}` : '/'} state={assetId ? navigationState : undefined}>返回</Link></section>;
   return <section><h1>{editing ? `编辑${labels[draft.type]}` : '新增投入或收益'}</h1><p>所属好物：{asset.name}</p><form onSubmit={submit} noValidate><fieldset className="form-fields" disabled={busy}>
     {(!editing || table === 'cost') && <fieldset><legend>类型</legend>{(['additional', 'consumable', ...(editing ? [] : ['revenue'])] as RecordType[]).map(type => <label className="inline" key={type}><input type="radio" checked={draft.type === type} onChange={() => set('type', type)} />{labels[type]}</label>)}</fieldset>}
     {draft.type === 'revenue' && <small>收益将从净投入中扣减。</small>}
     <label>金额（元）<input inputMode="decimal" value={draft.amount} onChange={e => set('amount', e.target.value)} required /></label>
     <label>日期<input type="date" min={asset.purchaseDate} max={localToday()} value={draft.date} onChange={e => set('date', e.target.value)} required /></label>
     <label>备注（可选）<textarea maxLength={2000} value={draft.note} onChange={e => set('note', e.target.value)} /></label>
-    {error && <ErrorMessage>{error}</ErrorMessage>}<div className="button-row"><Link className="button" to={`/assets/${assetId}`}>取消</Link>{editing && <button type="button" className="danger" onClick={() => setConfirmDelete(true)}>删除</button>}<button className="primary" disabled={busy}>{busy ? '保存中…' : '保存'}</button></div>
+    {error && <ErrorMessage>{error}</ErrorMessage>}<div className="button-row"><Link className="button" to={`/assets/${assetId}`} state={navigationState}>取消</Link>{editing && <button type="button" className="danger" onClick={() => setConfirmDelete(true)}>删除</button>}<button className="primary" disabled={busy}>{busy ? '保存中…' : '保存'}</button></div>
   </fieldset></form>
     {confirmDelete && source && <ConfirmDialog title={`删除${labels[draft.type]}？`} confirmLabel="删除流水" busy={busy} onCancel={() => setConfirmDelete(false)} onConfirm={remove}><p>{source.record.date} · {(source.record.amountCents / 100).toFixed(2)} 元。删除后不可撤销。</p></ConfirmDialog>}
     {blocker.state === 'blocked' && !confirmDelete && <ConfirmDialog title={busy ? '正在保存' : '放弃未保存修改？'} confirmLabel={busy ? '等待保存' : '放弃并离开'} busy={busy} onCancel={() => blocker.reset()} onConfirm={() => { if (!busyRef.current) blocker.proceed(); }}><p>{busy ? '请等待保存完成后再离开。' : '离开后当前输入不会保留。'}</p></ConfirmDialog>}

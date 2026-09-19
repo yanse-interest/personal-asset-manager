@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
-import { Link, useBlocker, useNavigate, useParams } from 'react-router';
+import { Link, useBlocker, useLocation, useNavigate, useParams } from 'react-router';
+import { readListPath } from '../app/listNavigation';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { correctUsageCount, deleteAsset, getAssetDeleteSnapshot, incrementUsage, type AssetDeleteSnapshot } from '../data/assets';
@@ -26,7 +27,9 @@ export function AssetDetailPage() {
 }
 
 function AssetDetail() {
-  const { assetId = '' } = useParams(); const navigate = useNavigate(); const today = useToday();
+  const { assetId = '' } = useParams(); const navigate = useNavigate(); const location = useLocation(); const today = useToday();
+  const listPath = readListPath(location.state);
+  const navigationState = { listPath };
   const result = useLiveQuery(async () => {
     try { return { snapshot: await getAssetDetailSnapshot(assetId), error: null as string | null }; }
     catch { return { snapshot: null, error: '无法读取好物，请刷新后重试。' }; }
@@ -48,7 +51,7 @@ function AssetDetail() {
   useEffect(() => () => { if (clearFeedbackTimer.current !== null) window.clearTimeout(clearFeedbackTimer.current); }, []);
   if (result === undefined) return <section><p>正在加载…</p></section>;
   if (result.error) return <section><h1>好物详情</h1><ErrorMessage>{result.error}</ErrorMessage><button onClick={() => window.location.reload()}>重试</button></section>;
-  if (!result.snapshot) return <section><h1>好物不存在或已删除</h1><Link to="/">返回首页</Link></section>;
+  if (!result.snapshot) return <section><h1>好物不存在或已删除</h1><Link to={listPath} replace>返回上一级</Link></section>;
   const { asset, category, costs, revenues } = result.snapshot; const values = calculateAssetCosts(asset, costs, revenues, today);
   const records: DisplayRecord[] = [...costs.map(record => ({ table: 'cost' as const, record })), ...revenues.map(record => ({ table: 'revenue' as const, record }))]
     .sort((a, b) => b.record.date.localeCompare(a.record.date) || b.record.createdAt.localeCompare(a.record.createdAt) || a.record.id.localeCompare(b.record.id));
@@ -56,7 +59,7 @@ function AssetDetail() {
   const useMetric = values.costPerUse ? `${formatRatio(values.costPerUse.numeratorCents, values.costPerUse.denominator)} / 次` : '— / 暂无使用记录';
   const atUsageLimit = asset.usageCount >= MAX_USAGE_COUNT;
   async function requestDelete() { setError(null); try { setDeleteSnapshot(await getAssetDeleteSnapshot(assetId)); } catch { setError('无法读取删除信息，请重试。'); } }
-  async function confirmDelete() { if (!deleteSnapshot || deleting.current) return; deleting.current = true; setBusy(true); setError(null); try { await deleteAsset(deleteSnapshot); navigate('/', { replace: true }); } catch (reason) { setDeleteSnapshot(null); setError(reason instanceof Error ? reason.message : '删除失败，请重试。'); } finally { deleting.current = false; setBusy(false); } }
+  async function confirmDelete() { if (!deleteSnapshot || deleting.current) return; deleting.current = true; setBusy(true); setError(null); try { await deleteAsset(deleteSnapshot); navigate(listPath, { replace: true }); } catch (reason) { setDeleteSnapshot(null); setError(reason instanceof Error ? reason.message : '删除失败，请重试。'); } finally { deleting.current = false; setBusy(false); } }
   async function handleIncrement() {
     if (incrementWriting.current) return;
     incrementWriting.current = true;
@@ -77,7 +80,7 @@ function AssetDetail() {
     catch (reason) { setCorrectionError(reason instanceof Error ? reason.message : '更正失败，请重试。'); }
     finally { correctionWriting.current = false; setCorrectionBusy(false); }
   }
-  return <section data-pwa-busy={busy || incrementing || correctionBusy ? 'true' : undefined}><div className="page-heading"><h1>{asset.name}</h1><Link className="button" to={`/assets/${asset.id}/edit`}>编辑</Link></div>
+  return <section data-pwa-busy={busy || incrementing || correctionBusy ? 'true' : undefined}><div className="page-heading"><h1>{asset.name}</h1><Link className="button" to={`/assets/${asset.id}/edit`} state={navigationState}>编辑</Link></div>
     <div className="hero-metric"><small>{asset.costMode === 'day' ? '日均成本' : '次均成本'}</small><strong>{asset.costMode === 'day' ? dayMetric : useMetric}</strong>{asset.costMode === 'use' && <span>累计 {asset.usageCount} 次 · 辅助日均 {dayMetric}</span>}<span>计费 {values.serviceDays} 天</span>
       {(asset.costMode === 'use' || asset.usageCount > 0) && <div className="usage-controls">{asset.lifecycleStatus === 'active' && asset.costMode === 'use' && <button className="primary" type="button" disabled={incrementing || atUsageLimit} onClick={handleIncrement}>{incrementing ? '记录中…' : '+ 使用一次'}</button>}<button type="button" disabled={incrementing || correctionBusy} onClick={openCorrection}>更正次数</button><small aria-live="polite">{atUsageLimit ? '使用次数已达到上限' : usageFeedback}</small></div>}
     </div>
@@ -86,9 +89,9 @@ function AssetDetail() {
     <h2>成本构成</h2><dl className="cost-summary"><dt>本体</dt><dd>{formatCents(values.purchaseCostCents)}</dd><dt>后续本体投入</dt><dd>{formatCents(values.additionalCostCents)}</dd><dt>耗材投入</dt><dd>{formatCents(values.consumableCostCents)}</dd><dt>总投入</dt><dd>{formatCents(values.totalCostCents)}</dd><dt>收益</dt><dd>{formatCents(values.revenueCents)}</dd><dt><strong>净投入</strong></dt><dd><strong>{formatCents(values.netCostCents)}</strong></dd></dl>
     <h2>好物信息</h2><dl><dt>类别</dt><dd>{category?.name ?? '未分类'}</dd><dt>状态</dt><dd>{asset.lifecycleStatus === 'active' ? '服役中' : asset.lifecycleStatus === 'retired' ? '已退役' : '已卖出'}</dd><dt>结束日期</dt><dd>{asset.endedDate ?? (asset.lifecycleStatus === 'active' ? '未结束' : '未填写')}</dd><dt>购买日期</dt><dd>{asset.purchaseDate}</dd><dt>观察方式</dt><dd>{asset.costMode === 'day' ? '按天' : '按次'}</dd><dt>到期日期</dt><dd>{asset.expiryDate ?? '未设置'}</dd>{asset.lifecycleStatus === 'active' && <><dt>到期状态</dt><dd>{expiryText(asset.expiryDate, today)}</dd></>}{asset.note && <><dt>备注</dt><dd>{asset.note}</dd></>}</dl>
     {asset.lifecycleStatus === 'sold' && <p className="notice">卖价已按“出售”收益流水记录；旧版已卖出好物如尚未记录卖价，请手动补记。更正卖出状态不会自动删除已有收益。</p>}
-    <h2>投入与收益</h2><div className="record-actions"><Link className="button" to={`/assets/${asset.id}/records/new?type=additional`}>添加本体投入</Link><Link className="button" to={`/assets/${asset.id}/records/new?type=consumable`}>添加耗材投入</Link><Link className="button" to={`/assets/${asset.id}/records/new?type=revenue`}>添加收益</Link></div>
-    {records.length === 0 ? <p>暂无后续记录。</p> : <ul className="record-list">{records.map(item => <li key={item.record.id}><Link to={item.table === 'cost' ? `/assets/${asset.id}/costs/${item.record.id}/edit` : `/assets/${asset.id}/revenues/${item.record.id}/edit`}><span><strong>{label(item)}</strong><small>{item.record.date}{item.record.note ? ` · ${item.record.note}` : ''}</small></span><strong>{formatCents(item.record.amountCents)}</strong></Link></li>)}</ul>}
-    {error && <ErrorMessage>{error}</ErrorMessage>}<div className="button-row"><Link className="button" to="/">返回首页</Link><button className="danger" onClick={requestDelete}>删除好物</button></div>
+    <h2>投入与收益</h2><div className="record-actions"><Link className="button" to={`/assets/${asset.id}/records/new?type=additional`} state={navigationState}>添加本体投入</Link><Link className="button" to={`/assets/${asset.id}/records/new?type=consumable`} state={navigationState}>添加耗材投入</Link><Link className="button" to={`/assets/${asset.id}/records/new?type=revenue`} state={navigationState}>添加收益</Link></div>
+    {records.length === 0 ? <p>暂无后续记录。</p> : <ul className="record-list">{records.map(item => <li key={item.record.id}><Link to={item.table === 'cost' ? `/assets/${asset.id}/costs/${item.record.id}/edit` : `/assets/${asset.id}/revenues/${item.record.id}/edit`} state={navigationState}><span><strong>{label(item)}</strong><small>{item.record.date}{item.record.note ? ` · ${item.record.note}` : ''}</small></span><strong>{formatCents(item.record.amountCents)}</strong></Link></li>)}</ul>}
+    {error && <ErrorMessage>{error}</ErrorMessage>}<div className="button-row"><Link className="button" to={listPath} replace>返回上一级</Link><button className="danger" onClick={requestDelete}>删除好物</button></div>
     {deleteSnapshot && <ConfirmDialog title="删除好物？" confirmLabel="删除好物" busy={busy} onCancel={() => setDeleteSnapshot(null)} onConfirm={confirmDelete}><p>“{deleteSnapshot.asset.name}”及其 {deleteSnapshot.costRecordIds.length} 条投入、{deleteSnapshot.revenueRecordIds.length} 条收益将永久删除，此操作不可撤销。</p></ConfirmDialog>}
     {blocker.state === 'blocked' && <ConfirmDialog title={correctionBusy ? '正在保存更正' : '放弃次数更正？'} confirmLabel="放弃并离开" busy={correctionBusy} onCancel={() => blocker.reset()} onConfirm={() => { if (!correctionWriting.current) blocker.proceed(); }}><p>离开后未保存的次数输入不会保留。</p></ConfirmDialog>}
   </section>;

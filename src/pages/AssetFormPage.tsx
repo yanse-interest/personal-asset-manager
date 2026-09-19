@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link, useBlocker, useNavigate, useParams } from 'react-router';
+import { Link, useBlocker, useLocation, useNavigate, useParams } from 'react-router';
+import { readListPath } from '../app/listNavigation';
 import { createAsset, getAsset, updateAsset } from '../data/assets';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { listCategories } from '../data/categories';
@@ -20,7 +21,8 @@ export function AssetFormPage() {
 }
 
 function AssetForm() {
-  const { assetId } = useParams(); const editing = Boolean(assetId); const navigate = useNavigate();
+  const { assetId } = useParams(); const editing = Boolean(assetId); const navigate = useNavigate(); const location = useLocation();
+  const navigationState = { listPath: readListPath(location.state) };
   const categoryResult = useLiveQuery(async () => {
     try { return { value: await listCategories(), error: null as string | null }; }
     catch { return { value: null, error: '无法读取类别，请刷新后重试。' }; }
@@ -47,17 +49,17 @@ function AssetForm() {
     try {
       const input = { name: draft.name, purchaseCost: draft.purchaseCost, purchaseDate: draft.purchaseDate, costMode: draft.costMode, initialUsageCount: draft.initialUsageCount, expiryDate: draft.expiryDate || null, note: draft.note, categoryId: draft.categoryId || null, lifecycleStatus: draft.lifecycleStatus, endedDate: draft.lifecycleStatus === 'active' ? null : draft.endedDate || null, salePrice: draft.salePrice, iconId: draft.iconId };
       const saved = editing && source && assetId ? await updateAsset(assetId, source, input) : await createAsset(input);
-      savedRef.current = true; setDirty(false); navigate(`/assets/${saved.id}`, { replace: true });
+      savedRef.current = true; setDirty(false); navigate(`/assets/${saved.id}`, { replace: true, state: navigationState });
     } catch (reason) { setError(reason instanceof Error ? reason.message : '保存失败，请重试。'); firstInput.current?.focus(); }
     finally { busyRef.current = false; setBusy(false); }
   }
   if (!loaded) return <section><p>正在加载…</p></section>;
   if (loadError) return <section><ErrorMessage>{loadError}</ErrorMessage><button onClick={() => window.location.reload()}>重试</button><Link to="/">返回首页</Link></section>;
-  if (missing) return <section><h1>好物不存在或已删除</h1><Link to="/">返回首页</Link></section>;
+  if (missing) return <section><h1>好物不存在或已删除</h1><Link to={navigationState.listPath}>返回上一级</Link></section>;
   if (categoryResult === undefined) return <section><p>正在加载类别…</p></section>;
   if (!categoryResult.value) return <section><ErrorMessage>{categoryResult.error}</ErrorMessage><button onClick={() => window.location.reload()}>重试</button></section>;
   const categories = categoryResult.value;
-  return <section className="form-page"><div className="form-heading"><Link to={editing && assetId ? `/assets/${assetId}` : '/'} aria-label="返回"><AppIcon name="back" /></Link><div><h1>{editing ? '编辑好物' : '记下一件好物'}</h1><p>{editing ? '更新这件好物的信息' : '记下从今天开始陪伴你的东西'}</p></div></div><form className="asset-form" onSubmit={submit} noValidate><fieldset className="form-fields" disabled={busy}>
+  return <section className="form-page"><div className="form-heading"><Link to={editing && assetId ? `/assets/${assetId}` : '/'} state={editing ? navigationState : undefined} aria-label="返回"><AppIcon name="back" /></Link><div><h1>{editing ? '编辑好物' : '记下一件好物'}</h1><p>{editing ? '更新这件好物的信息' : '记下从今天开始陪伴你的东西'}</p></div></div><form className="asset-form" onSubmit={submit} noValidate><fieldset className="form-fields" disabled={busy}>
     <button className="form-asset-icon" type="button" onClick={() => setIconPickerOpen(true)} aria-label="更换好物图标"><AssetIcon id={draft.iconId} name={draft.name} categoryName={categories.find(category => category.id === draft.categoryId)?.name} size={52}/><small>更换图标</small></button>
     <label>名称<input ref={firstInput} value={draft.name} maxLength={100} onChange={e => set('name', e.target.value)} required /></label>
     <label>购买金额（元）<input inputMode="decimal" value={draft.purchaseCost} onChange={e => set('purchaseCost', e.target.value)} required /></label>
@@ -74,6 +76,6 @@ function AssetForm() {
     {editing && source && <small>已有使用次数 {source.usageCount} 次；普通编辑不会覆盖次数。</small>}
     <div className="date-field"><label>到期日期（可选）<input type="date" min={draft.purchaseDate} value={draft.expiryDate} onChange={e => set('expiryDate', e.target.value)} /></label>{draft.expiryDate && <button className="date-clear" type="button" onClick={() => set('expiryDate', '')}>清空到期日期</button>}<small>仅用于到期提示，不停止成本计算。</small></div>
     <label>备注（可选）<textarea value={draft.note} maxLength={2000} onChange={e => set('note', e.target.value)} /></label>
-    {error && <ErrorMessage>{error}</ErrorMessage>}<div className="button-row"><Link className="button" to={editing && assetId ? `/assets/${assetId}` : '/'}>取消</Link><button className="primary" disabled={busy}>{busy ? '保存中…' : '保存'}</button></div>
+    {error && <ErrorMessage>{error}</ErrorMessage>}<div className="button-row"><Link className="button" to={editing && assetId ? `/assets/${assetId}` : '/'} state={editing ? navigationState : undefined}>取消</Link><button className="primary" disabled={busy}>{busy ? '保存中…' : '保存'}</button></div>
   </fieldset></form>{iconPickerOpen && <AssetIconPicker selectedId={draft.iconId} onSelect={id => { set('iconId', id); setIconPickerOpen(false); }} onClose={() => setIconPickerOpen(false)} />}{blocker.state === 'blocked' && <ConfirmDialog title={busy ? '正在保存' : '放弃未保存修改？'} confirmLabel={busy ? '等待保存' : '放弃并离开'} busy={busy} onCancel={() => blocker.reset()} onConfirm={() => { if (!busyRef.current) blocker.proceed(); }}><p>{busy ? '请等待保存完成后再离开。' : '离开后当前输入不会保留。'}</p></ConfirmDialog>}</section>;
 }
