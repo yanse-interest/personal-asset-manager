@@ -8,7 +8,7 @@ const now = new Date('2026-09-15T08:00:00.000Z');
 const timestamp = now.toISOString();
 const asset: Asset = {
   id: '11111111-1111-4111-8111-111111111112', name: '测试球鞋 A',
-  purchaseCostCents: 10000, purchaseDate: '2026-09-13', costMode: 'day', usageCount: 0,
+  purchaseCostCents: 10000, purchaseDate: '2026-09-13', serviceStartDate: '2026-09-14', costMode: 'day', usageCount: 0,
   expiryDate: null, note: null, createdAt: timestamp, updatedAt: timestamp,
   categoryId: null, lifecycleStatus: 'retired', endedDate: '2026-09-14', iconId: 'emoji:其他:17',
 };
@@ -21,7 +21,7 @@ const refund: RevenueRecord = {
   amountCents: 12000, date: '2026-09-14', note: '测试回收', createdAt: timestamp, updatedAt: timestamp,
 };
 const candidate = () => ({
-  format: 'large-asset-cost-increment', schemaVersion: 1, exportedAt: timestamp, currency: 'CNY',
+  format: 'large-asset-cost-increment', schemaVersion: 2, exportedAt: timestamp, currency: 'CNY',
   categoryName: '日常球鞋', assets: [{ ...asset }, { ...refundAsset }], costRecords: [], revenueRecords: [{ ...refund }],
 });
 let database: AssetDatabase;
@@ -47,6 +47,19 @@ describe('incremental import', () => {
     await expect(mergeIncrementalImport(input, database, now)).rejects.toThrow('疑似重复');
     expect(await database.assets.count()).toBe(2);
     expect(await database.revenueRecords.count()).toBe(1);
+  });
+
+  it('upgrades v1 incremental assets to purchase-date service starts', () => {
+    const previous = candidate();
+    previous.schemaVersion = 1 as 2;
+    previous.assets = previous.assets.map(item => {
+      const legacy = { ...item };
+      delete (legacy as Partial<Asset>).serviceStartDate;
+      return legacy as Asset;
+    });
+    const parsed = parseIncrementalImport(JSON.stringify(previous), now);
+    expect(parsed.schemaVersion).toBe(2);
+    expect(parsed.assets.map(item => item.serviceStartDate)).toEqual(['2026-09-13', '2026-09-13']);
   });
 
   it('rejects malformed data and rolls back a failed final write', async () => {

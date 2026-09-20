@@ -34,6 +34,14 @@ export class AssetDatabase extends Dexie {
     }).upgrade(async transaction => {
       await transaction.table<Asset, string>('assets').toCollection().modify(asset => { asset.iconId = null; });
     });
+    this.version(4).stores({
+      assets: 'id',
+      categories: 'id, &name',
+      costRecords: 'id, assetId',
+      revenueRecords: 'id, assetId',
+    }).upgrade(async transaction => {
+      await transaction.table<Asset, string>('assets').toCollection().modify(asset => { asset.serviceStartDate = asset.purchaseDate; });
+    });
     this.on('blocked', () => onIssue?.('blocked'));
     this.on('versionchange', () => {
       this.close();

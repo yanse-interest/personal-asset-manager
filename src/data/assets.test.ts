@@ -14,11 +14,19 @@ afterEach(async () => { database.close(); await database.delete(); });
 describe('asset CRUD', () => {
   it('creates, persists, and edits without overwriting usage count', async () => {
     const created = await createAsset(input, database, now);
-    expect(created).toMatchObject({ name: '咖啡机', purchaseCostCents: 99_999, usageCount: 3, note: null });
+    expect(created).toMatchObject({ name: '咖啡机', purchaseCostCents: 99_999, serviceStartDate: input.purchaseDate, usageCount: 3, note: null });
     const updated = await updateAsset(created.id, created, { ...input, name: '新名称', purchaseCost: '0', costMode: 'day' }, database, new Date('2026-09-14T08:00:00.000Z'));
     expect(updated).toMatchObject({ id: created.id, createdAt: created.createdAt, purchaseCostCents: 0, usageCount: 3 });
     database.close(); database = new AssetDatabase(database.name);
     expect(await database.assets.get(created.id)).toEqual(updated);
+  });
+
+  it('allows an editable start date while keeping the purchase date as the default', async () => {
+    const delayed = await createAsset({ ...input, purchaseDate: '2026-09-10', serviceStartDate: '2026-09-12' }, database, now);
+    expect(delayed).toMatchObject({ purchaseDate: '2026-09-10', serviceStartDate: '2026-09-12' });
+    const synced = await createAsset({ ...input, name: '默认日期', purchaseDate: '2026-09-10' }, database, now);
+    expect(synced.serviceStartDate).toBe('2026-09-10');
+    await expect(createAsset({ ...input, purchaseDate: '2026-09-12', serviceStartDate: '2026-09-11' }, database, now)).rejects.toThrow('serviceStartDate');
   });
 
   it('rejects stale edits and invalid purchase-date changes', async () => {

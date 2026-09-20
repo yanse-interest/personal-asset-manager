@@ -45,6 +45,7 @@ export function calculateAssetCosts(
   const netCostCents = safeAdd(totalCostCents, -revenueCents);
   const serviceEnd = asset.lifecycleStatus === 'active' || asset.endedDate === null ? today : asset.endedDate;
   const owned = daysOwned(asset.purchaseDate, serviceEnd);
+  const serviceDays = daysOwned(asset.serviceStartDate, serviceEnd);
   return {
     purchaseCostCents: asset.purchaseCostCents,
     additionalCostCents,
@@ -53,9 +54,9 @@ export function calculateAssetCosts(
     revenueCents,
     netCostCents,
     daysOwned: owned,
-    serviceDays: owned,
-    costPerDay: { numeratorCents: netCostCents, denominator: owned },
+    serviceDays,
+    costPerDay: { numeratorCents: netCostCents, denominator: serviceDays },
     costPerUse: asset.usageCount > 0 ? { numeratorCents: netCostCents, denominator: asset.usageCount } : null,
-    clockBeforePurchase: today < asset.purchaseDate || (asset.endedDate !== null && today < asset.endedDate),
+    clockBeforePurchase: today < asset.purchaseDate || today < asset.serviceStartDate || (asset.endedDate !== null && today < asset.endedDate),
   };
 }

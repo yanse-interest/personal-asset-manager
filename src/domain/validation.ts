@@ -1,6 +1,6 @@
 import { isLocalDate } from './dates';
 import { MAX_AMOUNT_CENTS } from './money';
-import type { Asset, AssetV2, Category, CostRecord, RevenueRecord, LocalDate, LegacyAssetV1 } from './types';
+import type { Asset, AssetV2, AssetV3, Category, CostRecord, RevenueRecord, LocalDate, LegacyAssetV1 } from './types';
 import { isAssetIconId } from './iconCatalog';
 
 export const MAX_RECORDS = 5_000;
@@ -114,12 +114,22 @@ export function validateAssetV2(value: unknown, today: LocalDate): AssetV2 {
   return { ...legacy, categoryId, lifecycleStatus: v.lifecycleStatus, endedDate };
 }
 
-export function validateAsset(value: unknown, today: LocalDate): Asset {
+export function validateAssetV3(value: unknown, today: LocalDate): AssetV3 {
   const v = object(value, 'asset');
   exactFields(v, ['id', 'name', 'purchaseCostCents', 'purchaseDate', 'costMode', 'usageCount', 'expiryDate', 'note', 'createdAt', 'updatedAt', 'categoryId', 'lifecycleStatus', 'endedDate', 'iconId'], 'asset');
   const legacy = validateAssetV2(Object.fromEntries(Object.entries(v).filter(([key]) => key !== 'iconId')), today);
   if (v.iconId !== null && !isAssetIconId(v.iconId)) throw new Error('asset.iconId: 未知图标');
   return { ...legacy, iconId: v.iconId };
+}
+
+export function validateAsset(value: unknown, today: LocalDate): Asset {
+  const v = object(value, 'asset');
+  exactFields(v, ['id', 'name', 'purchaseCostCents', 'purchaseDate', 'costMode', 'usageCount', 'expiryDate', 'note', 'createdAt', 'updatedAt', 'categoryId', 'lifecycleStatus', 'endedDate', 'iconId', 'serviceStartDate'], 'asset');
+  const previous = validateAssetV3(Object.fromEntries(Object.entries(v).filter(([key]) => key !== 'serviceStartDate')), today);
+  const serviceStartDate = localDate(v.serviceStartDate, 'asset.serviceStartDate');
+  if (serviceStartDate < previous.purchaseDate || serviceStartDate > today) throw new Error('asset.serviceStartDate: 必须在购买日至今天之间');
+  if (previous.endedDate !== null && previous.endedDate < serviceStartDate) throw new Error('asset.endedDate: 不得早于开始使用日期');
+  return { ...previous, serviceStartDate };
 }
 
 export function validateCategory(value: unknown): Category {

@@ -7,18 +7,18 @@ import { Dexie } from 'dexie';
 const timestamp = '2026-09-13T00:00:00.000Z';
 const asset: Asset = {
   id: '123e4567-e89b-42d3-a456-426614174000', name: '测试资产',
-  purchaseCostCents: 100_000, purchaseDate: '2026-09-13', costMode: 'day',
+  purchaseCostCents: 100_000, purchaseDate: '2026-09-13', serviceStartDate: '2026-09-13', costMode: 'day',
   usageCount: 0, expiryDate: null, note: null, createdAt: timestamp, updatedAt: timestamp,
   categoryId: null, lifecycleStatus: 'active', endedDate: null, iconId: null,
 };
 
-describe('Dexie v3 schema', () => {
+describe('Dexie v4 schema', () => {
   it('persists four stores and their parent indexes across reopen', async () => {
     const name = `asset-test-${crypto.randomUUID()}`;
     const first = new AssetDatabase(name);
     try {
       await first.open();
-      expect(first.verno).toBe(3);
+      expect(first.verno).toBe(4);
       expect(first.tables.map(table => table.name).sort()).toEqual(['assets', 'categories', 'costRecords', 'revenueRecords']);
       await first.assets.add(asset);
       await first.costRecords.add({ id: '123e4567-e89b-42d3-a456-426614174001', assetId: asset.id, kind: 'additional', amountCents: 100, date: '2026-09-13', note: null, createdAt: timestamp, updatedAt: timestamp });
@@ -42,12 +42,12 @@ describe('Dexie v3 schema', () => {
     await legacy.open(); await legacy.table('assets').add(oldAsset); await legacy.table('costRecords').add(oldCost); legacy.close();
     const upgraded = new AssetDatabase(name);
     try {
-      expect(await upgraded.assets.get(asset.id)).toEqual({ ...oldAsset, categoryId: null, lifecycleStatus: 'active', endedDate: null, iconId: null });
+      expect(await upgraded.assets.get(asset.id)).toEqual({ ...oldAsset, categoryId: null, lifecycleStatus: 'active', endedDate: null, iconId: null, serviceStartDate: oldAsset.purchaseDate });
       expect(await upgraded.costRecords.toArray()).toEqual([oldCost]);
       expect(await upgraded.categories.count()).toBe(0);
       upgraded.close();
       const repeated = new AssetDatabase(name);
-      try { expect(await repeated.assets.toArray()).toEqual([{ ...oldAsset, categoryId: null, lifecycleStatus: 'active', endedDate: null, iconId: null }]); }
+      try { expect(await repeated.assets.toArray()).toEqual([{ ...oldAsset, categoryId: null, lifecycleStatus: 'active', endedDate: null, iconId: null, serviceStartDate: oldAsset.purchaseDate }]); }
       finally { repeated.close(); }
     } finally { upgraded.close(); await upgraded.delete(); }
   });
@@ -56,7 +56,7 @@ describe('Dexie v3 schema', () => {
     const name = `v2-icon-${crypto.randomUUID()}`;
     const legacy = new Dexie(name);
     legacy.version(2).stores({ assets: 'id', categories: 'id, &name', costRecords: 'id, assetId', revenueRecords: 'id, assetId' });
-    const oldAsset = { ...asset }; delete (oldAsset as Partial<Asset>).iconId;
+    const oldAsset = { ...asset }; delete (oldAsset as Partial<Asset>).iconId; delete (oldAsset as Partial<Asset>).serviceStartDate;
     const oldCost = { id: crypto.randomUUID(), assetId: asset.id, kind: 'additional', amountCents: 100, date: asset.purchaseDate, note: null, createdAt: timestamp, updatedAt: timestamp };
     await legacy.open();
     await legacy.table('assets').add(oldAsset);
@@ -64,7 +64,7 @@ describe('Dexie v3 schema', () => {
     legacy.close();
     const upgraded = new AssetDatabase(name);
     try {
-      expect(await upgraded.assets.get(asset.id)).toEqual({ ...oldAsset, iconId: null });
+      expect(await upgraded.assets.get(asset.id)).toEqual({ ...oldAsset, iconId: null, serviceStartDate: oldAsset.purchaseDate });
       expect(await upgraded.costRecords.toArray()).toEqual([oldCost]);
       expect(await upgraded.categories.count()).toBe(0);
     } finally { upgraded.close(); await upgraded.delete(); }
@@ -74,7 +74,7 @@ describe('Dexie v3 schema', () => {
     const name = `blocked-upgrade-${crypto.randomUUID()}`;
     const legacy = new Dexie(name);
     legacy.version(2).stores({ assets: 'id', categories: 'id, &name', costRecords: 'id, assetId', revenueRecords: 'id, assetId' });
-    const oldAsset = { ...asset }; delete (oldAsset as Partial<Asset>).iconId;
+    const oldAsset = { ...asset }; delete (oldAsset as Partial<Asset>).iconId; delete (oldAsset as Partial<Asset>).serviceStartDate;
     const oldCost = { id: crypto.randomUUID(), assetId: asset.id, kind: 'additional', amountCents: 100, date: asset.purchaseDate, note: null, createdAt: timestamp, updatedAt: timestamp };
     let heldConnection: IDBDatabase | undefined;
     const events: string[] = [];
@@ -97,8 +97,8 @@ describe('Dexie v3 schema', () => {
       await upgraded.open();
       expect(events).toEqual(['old-versionchange', 'blocked']);
       expect(upgraded.isOpen()).toBe(true);
-      expect(upgraded.verno).toBe(3);
-      expect(await upgraded.assets.toArray()).toEqual([{ ...oldAsset, iconId: null }]);
+      expect(upgraded.verno).toBe(4);
+      expect(await upgraded.assets.toArray()).toEqual([{ ...oldAsset, iconId: null, serviceStartDate: oldAsset.purchaseDate }]);
       expect(await upgraded.costRecords.toArray()).toEqual([oldCost]);
     } finally {
       heldConnection?.close(); legacy.close(); upgraded.close(); await upgraded.delete();
@@ -110,7 +110,7 @@ describe('Dexie v3 schema', () => {
     const events: Array<{ issue: DatabaseIssue; open: boolean }> = [];
     const current = new AssetDatabase(name, issue => { events.push({ issue, open: current.isOpen() }); });
     const upgraded = new Dexie(name);
-    upgraded.version(4).stores({ assets: 'id', categories: 'id, &name', costRecords: 'id, assetId', revenueRecords: 'id, assetId' });
+    upgraded.version(5).stores({ assets: 'id', categories: 'id, &name', costRecords: 'id, assetId', revenueRecords: 'id, assetId' });
     const blocked: string[] = [];
     upgraded.on('blocked', () => { blocked.push('blocked'); });
     try {

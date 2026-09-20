@@ -23,8 +23,12 @@ export interface AssetV2 extends LegacyAssetV1 {
   endedDate: LocalDate | null;
 }
 
-export interface Asset extends AssetV2 {
+export interface AssetV3 extends AssetV2 {
   iconId: string | null;
+}
+
+export interface Asset extends AssetV3 {
+  serviceStartDate: LocalDate;
 }
 
 export interface Category {
@@ -79,9 +83,14 @@ export interface BackupV2 {
 
 export interface BackupV3 extends Omit<BackupV2, 'schemaVersion' | 'assets'> {
   schemaVersion: 3;
+  assets: AssetV3[];
+}
+
+export interface BackupV4 extends Omit<BackupV3, 'schemaVersion' | 'assets'> {
+  schemaVersion: 4;
   assets: Asset[];
 }
 
-export interface BackupImport extends BackupV3 {
-  readonly sourceSchemaVersion: 1 | 2 | 3;
+export interface BackupImport extends BackupV4 {
+  readonly sourceSchemaVersion: 1 | 2 | 3 | 4;
 }

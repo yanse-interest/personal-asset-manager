@@ -12,8 +12,8 @@ import { AppIcon } from '../components/AppIcon';
 import { AssetIcon } from '../components/AssetIcon';
 import { AssetIconPicker } from '../components/AssetIconPicker';
 
-interface Draft { name: string; purchaseCost: string; purchaseDate: string; costMode: CostMode; initialUsageCount: string; expiryDate: string; note: string; categoryId: string; lifecycleStatus: LifecycleStatus; endedDate: string; salePrice: string; iconId: string | null }
-const emptyDraft = (): Draft => ({ name: '', purchaseCost: '', purchaseDate: localToday(), costMode: 'day', initialUsageCount: '0', expiryDate: '', note: '', categoryId: '', lifecycleStatus: 'active', endedDate: '', salePrice: '', iconId: null });
+interface Draft { name: string; purchaseCost: string; purchaseDate: string; serviceStartDate: string; costMode: CostMode; initialUsageCount: string; expiryDate: string; note: string; categoryId: string; lifecycleStatus: LifecycleStatus; endedDate: string; salePrice: string; iconId: string | null }
+const emptyDraft = (): Draft => { const today = localToday(); return { name: '', purchaseCost: '', purchaseDate: today, serviceStartDate: today, costMode: 'day', initialUsageCount: '0', expiryDate: '', note: '', categoryId: '', lifecycleStatus: 'active', endedDate: '', salePrice: '', iconId: null }; };
 
 export function AssetFormPage() {
   const { assetId } = useParams();
@@ -37,17 +37,18 @@ function AssetForm() {
   const firstInput = useRef<HTMLInputElement>(null);
   useEffect(() => { if (!assetId) return; let cancelled = false; void getAsset(assetId).then(asset => {
     if (cancelled) return;
-    if (!asset) setMissing(true); else { setSource(asset); setDraft({ name: asset.name, purchaseCost: (asset.purchaseCostCents / 100).toFixed(2), purchaseDate: asset.purchaseDate, costMode: asset.costMode, initialUsageCount: String(asset.usageCount), expiryDate: asset.expiryDate ?? '', note: asset.note ?? '', categoryId: asset.categoryId ?? '', lifecycleStatus: asset.lifecycleStatus, endedDate: asset.endedDate ?? '', salePrice: '', iconId: asset.iconId }); }
+    if (!asset) setMissing(true); else { setSource(asset); setDraft({ name: asset.name, purchaseCost: (asset.purchaseCostCents / 100).toFixed(2), purchaseDate: asset.purchaseDate, serviceStartDate: asset.serviceStartDate, costMode: asset.costMode, initialUsageCount: String(asset.usageCount), expiryDate: asset.expiryDate ?? '', note: asset.note ?? '', categoryId: asset.categoryId ?? '', lifecycleStatus: asset.lifecycleStatus, endedDate: asset.endedDate ?? '', salePrice: '', iconId: asset.iconId }); }
     setLoaded(true);
   }).catch(() => { if (!cancelled) { setLoadError('无法读取好物，请刷新后重试。'); setLoaded(true); } }); return () => { cancelled = true; }; }, [assetId]);
   useEffect(() => { const handler = (event: BeforeUnloadEvent) => { if (dirty || busyRef.current) event.preventDefault(); }; window.addEventListener('beforeunload', handler); return () => window.removeEventListener('beforeunload', handler); }, [dirty]);
   const blocker = useBlocker(() => !savedRef.current && (dirty || busyRef.current));
   const set = (field: keyof Draft, value: string | null) => { setDraft(current => ({ ...current, [field]: value })); setDirty(true); };
+  const setPurchaseDate = (value: string) => { setDraft(current => ({ ...current, purchaseDate: value, serviceStartDate: current.serviceStartDate === current.purchaseDate ? value : current.serviceStartDate })); setDirty(true); };
   async function submit(event: FormEvent) {
     event.preventDefault(); if (busyRef.current || (editing && !source)) return;
     busyRef.current = true; setError(null); setBusy(true);
     try {
-      const input = { name: draft.name, purchaseCost: draft.purchaseCost, purchaseDate: draft.purchaseDate, costMode: draft.costMode, initialUsageCount: draft.initialUsageCount, expiryDate: draft.expiryDate || null, note: draft.note, categoryId: draft.categoryId || null, lifecycleStatus: draft.lifecycleStatus, endedDate: draft.lifecycleStatus === 'active' ? null : draft.endedDate || null, salePrice: draft.salePrice, iconId: draft.iconId };
+      const input = { name: draft.name, purchaseCost: draft.purchaseCost, purchaseDate: draft.purchaseDate, serviceStartDate: draft.serviceStartDate, costMode: draft.costMode, initialUsageCount: draft.initialUsageCount, expiryDate: draft.expiryDate || null, note: draft.note, categoryId: draft.categoryId || null, lifecycleStatus: draft.lifecycleStatus, endedDate: draft.lifecycleStatus === 'active' ? null : draft.endedDate || null, salePrice: draft.salePrice, iconId: draft.iconId };
       const saved = editing && source && assetId ? await updateAsset(assetId, source, input) : await createAsset(input);
       savedRef.current = true; setDirty(false); navigate(`/assets/${saved.id}`, { replace: true, state: navigationState });
     } catch (reason) { setError(reason instanceof Error ? reason.message : '保存失败，请重试。'); firstInput.current?.focus(); }
@@ -64,10 +65,11 @@ function AssetForm() {
     <label>名称<input ref={firstInput} value={draft.name} maxLength={100} onChange={e => set('name', e.target.value)} required /></label>
     <label>购买金额（元）<input inputMode="decimal" value={draft.purchaseCost} onChange={e => set('purchaseCost', e.target.value)} required /></label>
     {draft.purchaseCost && Number(draft.purchaseCost) < 1000 && <small>建议主要记录约 ¥1000 以上的大件，此金额仍可保存。</small>}
-    <label>购买日期<input type="date" value={draft.purchaseDate} max={localToday()} onChange={e => set('purchaseDate', e.target.value)} required /></label>
+    <label>购买日期<input type="date" value={draft.purchaseDate} max={localToday()} onChange={e => setPurchaseDate(e.target.value)} required /></label>
+    <label>开始使用日期<input type="date" min={draft.purchaseDate} max={localToday()} value={draft.serviceStartDate} onChange={e => set('serviceStartDate', e.target.value)} required /><small>默认与购买日期一致，也可以改为实际开始使用的日期。</small></label>
     <label>类别<select value={draft.categoryId} onChange={e => set('categoryId', e.target.value)}><option value="">未分类</option>{draft.categoryId && !categories.some(category => category.id === draft.categoryId) && <option value={draft.categoryId}>类别已删除，请重新选择</option>}{categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label><small><Link to="/settings">在设置页管理类别</Link></small>
     <label>使用状态<select value={draft.lifecycleStatus} onChange={e => { set('lifecycleStatus', e.target.value); if (e.target.value === 'active') set('endedDate', ''); }}><option value="active">服役中</option><option value="retired">已退役</option><option value="sold">已卖出</option></select></label>
-    {draft.lifecycleStatus !== 'active' && <div className="date-field"><label>结束日期{draft.lifecycleStatus === 'retired' ? '（可选）' : ''}<input type="date" min={draft.purchaseDate} max={localToday()} value={draft.endedDate} onChange={e => set('endedDate', e.target.value)} required={draft.lifecycleStatus === 'sold'} /></label>{draft.endedDate && <button className="date-clear" type="button" onClick={() => set('endedDate', '')}>清空结束日期</button>}{draft.lifecycleStatus === 'retired' && <small>不填写时，按天指标会继续计算到今天。</small>}</div>}
+    {draft.lifecycleStatus !== 'active' && <div className="date-field"><label>结束日期{draft.lifecycleStatus === 'retired' ? '（可选）' : ''}<input type="date" min={draft.serviceStartDate || draft.purchaseDate} max={localToday()} value={draft.endedDate} onChange={e => set('endedDate', e.target.value)} required={draft.lifecycleStatus === 'sold'} /></label>{draft.endedDate && <button className="date-clear" type="button" onClick={() => set('endedDate', '')}>清空结束日期</button>}{draft.lifecycleStatus === 'retired' && <small>不填写时，按天指标会继续计算到今天。</small>}</div>}
     {draft.lifecycleStatus === 'sold' && (!editing || source?.lifecycleStatus !== 'sold') && <label>卖价（元，必填）<input inputMode="decimal" value={draft.salePrice} onChange={e => set('salePrice', e.target.value)} required /><small>保存时会同时新增一条“出售”收益，日期为结束日期。</small></label>}
     {draft.lifecycleStatus === 'sold' && editing && source?.lifecycleStatus === 'sold' && <small>再次编辑不会重复记录卖价；如需更正金额，请编辑详情中的出售收益流水。</small>}
     {editing && source?.lifecycleStatus === 'sold' && draft.lifecycleStatus !== 'sold' && <small>撤销卖出状态不会自动删除原出售收益，请自行核对。</small>}

@@ -1,12 +1,12 @@
 import { localToday } from '../domain/dates';
 import type { Asset, CostRecord, RevenueRecord } from '../domain/types';
 import { MAX_CATEGORIES, MAX_RECORDS, validateCategory } from '../domain/validation';
-import { MAX_BACKUP_BYTES, validateBackupV3 } from './backup';
+import { MAX_BACKUP_BYTES, validateBackupV3, validateBackupV4 } from './backup';
 import { db, type AssetDatabase } from './db';
 
 export interface IncrementalImport {
   format: 'large-asset-cost-increment';
-  schemaVersion: 1;
+  schemaVersion: 2;
   exportedAt: string;
   currency: 'CNY';
   categoryName: string;
@@ -23,15 +23,16 @@ export function parseIncrementalImport(json: string, now = new Date()): Incremen
   const root = raw as Record<string, unknown>;
   const fields = ['format', 'schemaVersion', 'exportedAt', 'currency', 'categoryName', 'assets', 'costRecords', 'revenueRecords'];
   if (Object.keys(root).length !== fields.length || fields.some(field => !Object.hasOwn(root, field))) throw new Error('增量文件字段不完整或含未知字段');
-  if (root.format !== 'large-asset-cost-increment' || root.schemaVersion !== 1) throw new Error('不支持的增量文件格式或版本');
+  if (root.format !== 'large-asset-cost-increment' || (root.schemaVersion !== 1 && root.schemaVersion !== 2)) throw new Error('不支持的增量文件格式或版本');
   const categoryName = validateCategory({ id: '11111111-1111-4111-8111-111111111111', name: root.categoryName, createdAt: root.exportedAt, updatedAt: root.exportedAt }).name;
-  const backup = validateBackupV3({
-    format: 'large-asset-cost-backup', schemaVersion: 3, exportedAt: root.exportedAt,
-    currency: root.currency, assets: root.assets, categories: [], costRecords: root.costRecords, revenueRecords: root.revenueRecords,
-  }, now);
+  const envelope = { format: 'large-asset-cost-backup', exportedAt: root.exportedAt,
+    currency: root.currency, assets: root.assets, categories: [], costRecords: root.costRecords, revenueRecords: root.revenueRecords };
+  const previous = root.schemaVersion === 1 ? validateBackupV3({ ...envelope, schemaVersion: 3 }, now) : null;
+  const backup = previous ? { ...previous, assets: previous.assets.map(asset => ({ ...asset, serviceStartDate: asset.purchaseDate })) }
+    : validateBackupV4({ ...envelope, schemaVersion: 4 }, now);
   if (backup.assets.length === 0) throw new Error('增量文件必须包含好物');
   if (backup.assets.some(asset => asset.categoryId !== null)) throw new Error('增量好物须由目标库按类别名称归类');
-  return { format: 'large-asset-cost-increment', schemaVersion: 1, exportedAt: backup.exportedAt,
+  return { format: 'large-asset-cost-increment', schemaVersion: 2, exportedAt: backup.exportedAt,
     currency: 'CNY', categoryName, assets: backup.assets, costRecords: backup.costRecords, revenueRecords: backup.revenueRecords };
 }
 

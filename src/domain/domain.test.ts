@@ -12,6 +12,7 @@ const timestamp = '2026-09-13T00:00:00.000Z';
 
 const asset: Asset = {
   id, name: '咖啡机', purchaseCostCents: 100_000, purchaseDate: '2026-09-13',
+  serviceStartDate: '2026-09-13',
   costMode: 'use', usageCount: 4, expiryDate: null, note: null,
   categoryId: null, lifecycleStatus: 'active', endedDate: null, iconId: null,
   createdAt: timestamp, updatedAt: timestamp,
@@ -73,6 +74,8 @@ describe('cost calculations', () => {
     expect(result).toMatchObject({ purchaseCostCents: 100_000, additionalCostCents: 20_000, consumableCostCents: 30_000, totalCostCents: 150_000, revenueCents: 10_000, netCostCents: 140_000, daysOwned: 1, costPerDay: { numeratorCents: 140_000, denominator: 1 }, costPerUse: { numeratorCents: 140_000, denominator: 4 } });
     expect(formatRatio(result.costPerUse!.numeratorCents, result.costPerUse!.denominator)).toBe('¥350.00');
     expect(calculateAssetCosts(asset, costs, revenues, '2026-09-14').costPerDay.denominator).toBe(2);
+    const delayed = calculateAssetCosts({ ...asset, purchaseDate: '2026-09-10', serviceStartDate: '2026-09-12' }, costs, revenues, '2026-09-14');
+    expect(delayed).toMatchObject({ daysOwned: 5, serviceDays: 3, costPerDay: { denominator: 3 } });
   });
 
   it('handles zero use, excess revenue and clock rollback', () => {
@@ -103,6 +106,9 @@ describe('model validation', () => {
     expect(() => validateAsset({ ...asset, extra: true }, '2026-09-13')).toThrow('asset.extra');
     expect(() => validateAsset({ ...asset, usageCount: 0.5 }, '2026-09-13')).toThrow('asset.usageCount');
     expect(() => validateAsset({ ...asset, purchaseDate: '2026-09-14' }, '2026-09-13')).toThrow('asset.purchaseDate');
+    expect(() => validateAsset({ ...asset, purchaseDate: '2026-09-12', serviceStartDate: '2026-09-11' }, '2026-09-13')).toThrow('asset.serviceStartDate');
+    expect(() => validateAsset({ ...asset, serviceStartDate: '2026-09-14' }, '2026-09-13')).toThrow('asset.serviceStartDate');
+    expect(() => validateAsset({ ...asset, serviceStartDate: '2026-09-13', lifecycleStatus: 'retired', endedDate: '2026-09-12' }, '2026-09-13')).toThrow('asset.endedDate');
     expect(() => validateAsset({ ...asset, expiryDate: '2026-09-12' }, '2026-09-13')).toThrow('asset.expiryDate');
     expect(() => validateAsset({ ...asset, note: '\ud800' }, '2026-09-13')).toThrow('asset.note');
     expect(() => validateAsset({ ...asset, name: '字'.repeat(101) }, '2026-09-13')).toThrow('asset.name');
