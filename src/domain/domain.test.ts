@@ -73,7 +73,7 @@ describe('cost calculations', () => {
     const result = calculateAssetCosts(asset, costs, revenues, '2026-09-13');
     expect(result).toMatchObject({ purchaseCostCents: 100_000, additionalCostCents: 20_000, consumableCostCents: 30_000, totalCostCents: 150_000, revenueCents: 10_000, netCostCents: 140_000, daysOwned: 1, costPerDay: { numeratorCents: 140_000, denominator: 1 }, costPerUse: { numeratorCents: 140_000, denominator: 4 } });
     expect(formatRatio(result.costPerUse!.numeratorCents, result.costPerUse!.denominator)).toBe('¥350.00');
-    expect(calculateAssetCosts(asset, costs, revenues, '2026-09-14').costPerDay.denominator).toBe(2);
+    expect(calculateAssetCosts(asset, costs, revenues, '2026-09-14').costPerDay!.denominator).toBe(2);
     const delayed = calculateAssetCosts({ ...asset, purchaseDate: '2026-09-10', serviceStartDate: '2026-09-12' }, costs, revenues, '2026-09-14');
     expect(delayed).toMatchObject({ daysOwned: 5, serviceDays: 3, costPerDay: { denominator: 3 } });
   });
@@ -84,6 +84,11 @@ describe('cost calculations', () => {
     expect(result.costPerUse).toBeNull();
     expect(result.daysOwned).toBe(1);
     expect(result.clockBeforePurchase).toBe(true);
+  });
+
+  it('does not start service clocks for pending assets', () => {
+    const pending = calculateAssetCosts({ ...asset, lifecycleStatus: 'pending', serviceStartDate: null, usageCount: 0 }, costs, revenues, '2026-09-15');
+    expect(pending).toMatchObject({ daysOwned: 3, serviceDays: 0, costPerDay: null, costPerUse: null });
   });
 
   it('rejects unsafe sums', () => {
@@ -127,5 +132,11 @@ describe('model validation', () => {
     expect(() => validateAsset({ ...asset, lifecycleStatus: 'retired', endedDate: '2026-09-12' }, '2026-09-13')).toThrow('asset.endedDate');
     expect(validateAsset({ ...asset, lifecycleStatus: 'retired', endedDate: null }, '2026-09-13').endedDate).toBeNull();
     expect(validateAsset({ ...asset, lifecycleStatus: 'sold', endedDate: '2026-09-13' }, '2026-09-13').endedDate).toBe('2026-09-13');
+  });
+
+  it('requires pending assets to have no service dates or usage', () => {
+    expect(validateAsset({ ...asset, lifecycleStatus: 'pending', serviceStartDate: null, endedDate: null, usageCount: 0 }, '2026-09-13')).toMatchObject({ lifecycleStatus: 'pending', serviceStartDate: null });
+    expect(() => validateAsset({ ...asset, lifecycleStatus: 'pending', serviceStartDate: '2026-09-13', usageCount: 0 }, '2026-09-13')).toThrow('serviceStartDate');
+    expect(() => validateAsset({ ...asset, lifecycleStatus: 'pending', serviceStartDate: null, usageCount: 1 }, '2026-09-13')).toThrow('usageCount');
   });
 });

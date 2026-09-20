@@ -27,11 +27,13 @@ export function DashboardPage() {
   const categoryId = requestedCategoryId === 'all' || requestedCategoryId === 'uncategorized' || categories.some(category => category.id === requestedCategoryId) ? requestedCategoryId : 'all';
   const summaries = summarizeAssets(result.snapshot, today);
   const categoryFiltered = summaries.filter(item => categoryId === 'all' || (categoryId === 'uncategorized' ? item.asset.categoryId === null : item.asset.categoryId === categoryId));
+  const pendingCount = categoryFiltered.filter(item => item.asset.lifecycleStatus === 'pending').length;
   const activeCount = categoryFiltered.filter(item => item.asset.lifecycleStatus === 'active').length;
   const retiredCount = categoryFiltered.filter(item => item.asset.lifecycleStatus === 'retired').length;
   const soldCount = categoryFiltered.filter(item => item.asset.lifecycleStatus === 'sold').length;
+  const served = categoryFiltered.filter(item => item.asset.serviceStartDate !== null);
   const longestDays = Math.max(0, ...categoryFiltered.map(item => item.values.serviceDays));
-  const averageDays = categoryFiltered.length ? Math.round(categoryFiltered.reduce((sum, item) => sum + item.values.serviceDays, 0) / categoryFiltered.length) : 0;
+  const averageDays = served.length ? Math.round(served.reduce((sum, item) => sum + item.values.serviceDays, 0) / served.length) : 0;
   const purchaseTotal = categoryFiltered.reduce((sum, item) => sum + item.values.purchaseCostCents, 0);
   const activeRatio = categoryFiltered.length ? Math.round(activeCount / categoryFiltered.length * 1000) / 10 : 0;
   const selected = categoryFiltered.filter(item => status === 'all' || item.asset.lifecycleStatus === status);
@@ -54,11 +56,11 @@ export function DashboardPage() {
       <p>其中 {activeCount} 件仍在好好使用</p>
       <div className="overview-facts"><div><small>最久陪伴</small><strong>{longestDays.toLocaleString('zh-CN')} 天</strong></div><div><small>平均持有</small><strong>{averageDays.toLocaleString('zh-CN')} 天</strong></div><div><small>累计购置</small><strong>{formatCents(purchaseTotal)}</strong></div></div>
       <div className="active-progress"><div><span>仍在使用</span><strong>{activeRatio}%</strong></div><div className="progress-track"><i style={{ width: `${activeRatio}%` }}/></div></div>
-      <div className="status-facts"><div><small>服役中</small><strong>{activeCount} 件</strong></div><div><small>已退役</small><strong>{retiredCount} 件</strong></div><div><small>已卖出</small><strong>{soldCount} 件</strong></div></div>
+      <div className="status-facts"><div><small>待服役</small><strong>{pendingCount} 件</strong></div><div><small>服役中</small><strong>{activeCount} 件</strong></div><div><small>已退役</small><strong>{retiredCount} 件</strong></div><div><small>已卖出</small><strong>{soldCount} 件</strong></div></div>
     </div>
 
     <div className="asset-section-heading"><h1>好物</h1><span>{sortedSelected.length} 件</span></div>
-    <div className="list-controls"><label>状态筛选<select aria-label="状态筛选" value={status} onChange={event => setFilter('status', event.target.value, 'active')}><option value="active">服役中（{statusCount('active')}）</option><option value="all">全部状态（{statusCount('all')}）</option><option value="retired">已退役（{statusCount('retired')}）</option><option value="sold">已卖出（{statusCount('sold')}）</option></select></label><label>成本排序<select aria-label="成本排序" value={sort} onChange={event => setFilter('sort', event.target.value, 'default')}><option value="default">默认排序</option><option value="day-desc">日均最高</option><option value="day-asc">日均最低</option><option value="use-desc">次均最高</option><option value="use-asc">次均最低</option></select></label></div>
+    <div className="list-controls"><label>状态筛选<select aria-label="状态筛选" value={status} onChange={event => setFilter('status', event.target.value, 'active')}><option value="active">服役中（{statusCount('active')}）</option><option value="pending">待服役（{statusCount('pending')}）</option><option value="all">全部状态（{statusCount('all')}）</option><option value="retired">已退役（{statusCount('retired')}）</option><option value="sold">已卖出（{statusCount('sold')}）</option></select></label><label>成本排序<select aria-label="成本排序" value={sort} onChange={event => setFilter('sort', event.target.value, 'default')}><option value="default">默认排序</option><option value="day-desc">日均最高</option><option value="day-asc">日均最低</option><option value="use-desc">次均最高</option><option value="use-asc">次均最低</option></select></label></div>
     {assets.length === 0 ? <div className="empty-state"><p>还没有记录好物。</p><div className="button-row"><Link className="button primary" to="/assets/new">记下第一件好物</Link><Link className="button" to="/settings">导入已有备份</Link></div></div> : selected.length === 0 ? <div className="empty-state"><p>“{statusLabel}”下暂时没有好物。</p><button onClick={() => setFilter('status', 'all', 'active')}>查看全部状态</button></div> : sortedSelected.length === 0 ? <div className="empty-state"><p>当前范围内暂无{sort.startsWith('use-') ? '按次' : '按日'}好物。</p><button onClick={() => setFilter('sort', 'default', 'default')}>恢复默认排序</button></div> : <ul className="asset-list">{sortedSelected.map(item => <li key={item.asset.id}><AssetCard asset={item.asset} category={item.category} costs={item.costs} revenues={item.revenues} today={today} /></li>)}</ul>}
   </section>;
 }

@@ -89,7 +89,7 @@ try {
     if (!downloaded) throw new Error('浏览器没有保存 JSON 文件');
     const backupPath = join(downloads, downloaded);
     const saved = JSON.parse(await readFile(backupPath, 'utf8'));
-    if (saved.schemaVersion !== 4 || saved.assets?.length !== 1 || saved.assets[0]?.serviceStartDate !== saved.assets[0]?.purchaseDate || saved.categories?.length !== 1 || saved.costRecords?.length !== 1 || saved.revenueRecords?.length !== 1) throw new Error('下载文件缺少四表记录或开始使用日期');
+    if (saved.schemaVersion !== 5 || saved.assets?.length !== 1 || saved.assets[0]?.serviceStartDate !== saved.assets[0]?.purchaseDate || saved.categories?.length !== 1 || saved.costRecords?.length !== 1 || saved.revenueRecords?.length !== 1) throw new Error('下载文件缺少四表记录或开始使用日期');
     await fixture('mutate');
     async function chooseDownloadedFile() {
       const documentNode = await app.send('DOM.getDocument');

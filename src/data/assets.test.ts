@@ -29,6 +29,14 @@ describe('asset CRUD', () => {
     await expect(createAsset({ ...input, purchaseDate: '2026-09-12', serviceStartDate: '2026-09-11' }, database, now)).rejects.toThrow('serviceStartDate');
   });
 
+  it('keeps purchased assets pending until an explicit service start', async () => {
+    const pending = await createAsset({ ...input, lifecycleStatus: 'pending', serviceStartDate: null, initialUsageCount: '0' }, database, now);
+    expect(pending).toMatchObject({ lifecycleStatus: 'pending', serviceStartDate: null, usageCount: 0 });
+    await expect(incrementUsage(pending.id, database, now)).rejects.toThrow('尚未开始服役');
+    const active = await updateAsset(pending.id, pending, { ...input, lifecycleStatus: 'active', serviceStartDate: '2026-09-13' }, database, now);
+    expect(active).toMatchObject({ lifecycleStatus: 'active', serviceStartDate: '2026-09-13' });
+  });
+
   it('rejects stale edits and invalid purchase-date changes', async () => {
     const created = await createAsset({ ...input, purchaseDate: '2026-09-10' }, database, now);
     await database.assets.update(created.id, { name: '另一标签已改名' });

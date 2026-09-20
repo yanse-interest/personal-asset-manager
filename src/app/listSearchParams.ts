@@ -3,7 +3,7 @@ import type { AssetSort } from '../domain/ledgers';
 
 export type StatusFilter = LifecycleStatus | 'all';
 
-const statusFilters = new Set<StatusFilter>(['active', 'retired', 'sold', 'all']);
+const statusFilters = new Set<StatusFilter>(['pending', 'active', 'retired', 'sold', 'all']);
 const assetSorts = new Set<AssetSort>(['default', 'day-desc', 'day-asc', 'use-desc', 'use-asc']);
 
 export function readStatusFilter(searchParams: URLSearchParams, fallback: StatusFilter): StatusFilter {

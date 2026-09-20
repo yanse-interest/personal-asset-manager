@@ -10,7 +10,7 @@ import { useToday } from '../hooks/useToday';
 export function StatusLedgerPage() {
   const { status } = useParams(); const [searchParams, setSearchParams] = useSearchParams(); const requestedCategoryId = readCategoryFilter(searchParams); const today = useToday();
   const result = useLiveQuery(async () => { try { return { snapshot: await getDashboardSnapshot(), error: null as string | null }; } catch { return { snapshot: null, error: '无法读取账本，请刷新后重试。' }; } });
-  if (status !== 'active' && status !== 'retired' && status !== 'sold') return <section><h1>状态账本不存在</h1><Link to="/">返回总览</Link></section>;
+  if (status !== 'pending' && status !== 'active' && status !== 'retired' && status !== 'sold') return <section><h1>状态账本不存在</h1><Link to="/">返回总览</Link></section>;
   if (result === undefined) return <section><p>正在加载账本…</p></section>;
   if (result.error || !result.snapshot) return <section><h1>{statusNames[status]}</h1><p role="alert">{result.error}</p><button onClick={() => window.location.reload()}>重试</button></section>;
   const categoryId = requestedCategoryId === 'all' || requestedCategoryId === 'uncategorized' || result.snapshot.categories.some(category => category.id === requestedCategoryId) ? requestedCategoryId : 'all';

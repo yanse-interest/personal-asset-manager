@@ -5,7 +5,7 @@ import { MAX_RECORDS, MAX_USAGE_COUNT, validateAsset, validateRevenueRecord } fr
 import { db, type AssetDatabase } from './db';
 
 export interface AssetInput {
-  name: string; purchaseCost: string; purchaseDate: LocalDate; serviceStartDate?: LocalDate; costMode: CostMode;
+  name: string; purchaseCost: string; purchaseDate: LocalDate; serviceStartDate?: LocalDate | null; costMode: CostMode;
   initialUsageCount?: string; expiryDate: LocalDate | null; note: string | null;
   categoryId?: string | null; lifecycleStatus?: LifecycleStatus; endedDate?: LocalDate | null;
   iconId?: string | null;
@@ -38,6 +38,7 @@ function parseUsageCount(text = '0'): number {
 function requireUsageAsset(current: Asset | undefined): Asset {
   if (!current) throw new AssetConflictError('资产不存在或已删除。');
   if (current.costMode !== 'use') throw new AssetConflictError('该资产已切换为按天观察，请刷新页面。');
+  if (current.lifecycleStatus === 'pending') throw new AssetConflictError('该资产尚未开始服役，不能记录使用次数。');
   if (current.lifecycleStatus !== 'active') throw new AssetConflictError('该资产已结束服役，不能继续记录使用次数。');
   return current;
 }
@@ -60,13 +61,14 @@ export const getAsset = (id: string, database: AssetDatabase = db) => database.a
 
 export async function createAsset(input: AssetInput, database: AssetDatabase = db, now = new Date()): Promise<Asset> {
   const timestamp = now.toISOString();
+  const lifecycleStatus = input.lifecycleStatus ?? 'active';
   const asset = validateAsset({
     id: crypto.randomUUID(), name: input.name, purchaseCostCents: parseYuan(input.purchaseCost, true),
     purchaseDate: input.purchaseDate, costMode: input.costMode,
-    serviceStartDate: input.serviceStartDate ?? input.purchaseDate,
+    serviceStartDate: lifecycleStatus === 'pending' ? null : input.serviceStartDate ?? input.purchaseDate,
     usageCount: input.costMode === 'use' ? parseUsageCount(input.initialUsageCount) : 0,
     expiryDate: input.expiryDate, note: input.note, createdAt: timestamp, updatedAt: timestamp,
-    categoryId: input.categoryId ?? null, lifecycleStatus: input.lifecycleStatus ?? 'active', endedDate: input.endedDate ?? null,
+    categoryId: input.categoryId ?? null, lifecycleStatus, endedDate: lifecycleStatus === 'pending' ? null : input.endedDate ?? null,
     iconId: input.iconId ?? null,
   }, localToday(now));
   const revenue = asset.lifecycleStatus === 'sold' ? saleRevenue(asset, input.salePrice, now) : null;
@@ -91,11 +93,12 @@ export async function updateAsset(id: string, expected: Asset, patch: AssetPatch
     if (earliest && patch.purchaseDate > earliest) throw new Error(`购买日期不得晚于已有流水日期 ${earliest}`);
     const categoryId = patch.categoryId === undefined ? current.categoryId : patch.categoryId;
     if (categoryId !== null && !(await database.categories.get(categoryId))) throw new AssetConflictError('所选类别已不存在，请刷新后重试。');
-    const serviceStartDate = patch.serviceStartDate ?? (current.serviceStartDate === current.purchaseDate ? patch.purchaseDate : current.serviceStartDate);
+    const lifecycleStatus = patch.lifecycleStatus ?? current.lifecycleStatus;
+    const serviceStartDate = lifecycleStatus === 'pending' ? null : patch.serviceStartDate ?? (current.serviceStartDate === null || current.serviceStartDate === current.purchaseDate ? patch.purchaseDate : current.serviceStartDate);
     const updated = validateAsset({ ...current, name: patch.name, purchaseCostCents: parseYuan(patch.purchaseCost, true),
       purchaseDate: patch.purchaseDate, serviceStartDate, costMode: patch.costMode, expiryDate: patch.expiryDate,
-      note: patch.note, categoryId, iconId: patch.iconId === undefined ? current.iconId : patch.iconId, lifecycleStatus: patch.lifecycleStatus ?? current.lifecycleStatus,
-      endedDate: patch.lifecycleStatus === 'active' ? null : (patch.endedDate === undefined ? current.endedDate : patch.endedDate), updatedAt: now.toISOString() }, localToday(now));
+      note: patch.note, categoryId, iconId: patch.iconId === undefined ? current.iconId : patch.iconId, lifecycleStatus,
+      endedDate: lifecycleStatus === 'active' || lifecycleStatus === 'pending' ? null : (patch.endedDate === undefined ? current.endedDate : patch.endedDate), updatedAt: now.toISOString() }, localToday(now));
     const revenue = current.lifecycleStatus !== 'sold' && updated.lifecycleStatus === 'sold' ? saleRevenue(updated, patch.salePrice, now) : null;
     if (revenue) await assertCapacity(database);
     await database.assets.put(updated);
@@ -128,6 +131,7 @@ export async function correctUsageCount(
     if (current.usageCount !== expectedUsageCount) {
       throw new AssetConflictError('使用次数已在其他页面变化，请核对最新次数后重试。');
     }
+    if (current.lifecycleStatus === 'pending' && parsed !== 0) throw new Error('待服役资产的使用次数必须为 0。');
     const updated = { ...current, usageCount: parsed, updatedAt: now.toISOString() };
     await database.assets.put(updated);
     return updated;

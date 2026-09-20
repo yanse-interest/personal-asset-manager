@@ -7,8 +7,8 @@ export interface LedgerTotals { count: number; totalCostCents: number; revenueCe
 export interface CategoryInsight { id: string; name: string; count: number; activeCount: number; longest: AssetSummary; totals: LedgerTotals }
 export type AssetSort = 'default' | 'day-desc' | 'day-asc' | 'use-desc' | 'use-asc';
 const add = (a: number, b: number) => { const value = a + b; if (!Number.isSafeInteger(value)) throw new Error('金额合计超出安全整数范围'); return value; };
-export const statusNames: Record<LifecycleStatus, string> = { active: '服役中', retired: '已退役', sold: '已卖出' };
-export const statuses: LifecycleStatus[] = ['active', 'retired', 'sold'];
+export const statusNames: Record<LifecycleStatus, string> = { pending: '待服役', active: '服役中', retired: '已退役', sold: '已卖出' };
+export const statuses: LifecycleStatus[] = ['pending', 'active', 'retired', 'sold'];
 export const sortedCategories = (categories: readonly Category[]) => [...categories].sort((a, b) => a.name.localeCompare(b.name, 'zh-CN') || a.id.localeCompare(b.id));
 
 export function summarizeAssets(facts: LedgerFacts, today: string): AssetSummary[] {
@@ -45,7 +45,7 @@ export function sortAssetSummaries(items: readonly AssetSummary[], sort: AssetSo
 }
 
 export function valueRankingCandidates(items: readonly AssetSummary[]): AssetSummary[] {
-  return items.filter(item => item.asset.lifecycleStatus === 'active' || item.asset.endedDate === null || item.asset.endedDate !== item.asset.serviceStartDate);
+  return items.filter(item => item.asset.serviceStartDate !== null && (item.asset.lifecycleStatus === 'active' || item.asset.endedDate === null || item.asset.endedDate !== item.asset.serviceStartDate));
 }
 
 export function longestAssetSummaries(items: readonly AssetSummary[], limit = 3): AssetSummary[] {

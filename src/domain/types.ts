@@ -2,7 +2,8 @@ export type LocalDate = string;
 export type Instant = string;
 export type CostMode = 'day' | 'use';
 export type CostKind = 'additional' | 'consumable';
-export type LifecycleStatus = 'active' | 'retired' | 'sold';
+export type LegacyLifecycleStatus = 'active' | 'retired' | 'sold';
+export type LifecycleStatus = 'pending' | LegacyLifecycleStatus;
 
 export interface LegacyAssetV1 {
   id: string;
@@ -19,7 +20,7 @@ export interface LegacyAssetV1 {
 
 export interface AssetV2 extends LegacyAssetV1 {
   categoryId: string | null;
-  lifecycleStatus: LifecycleStatus;
+  lifecycleStatus: LegacyLifecycleStatus;
   endedDate: LocalDate | null;
 }
 
@@ -27,8 +28,13 @@ export interface AssetV3 extends AssetV2 {
   iconId: string | null;
 }
 
-export interface Asset extends AssetV3 {
+export interface AssetV4 extends AssetV3 {
   serviceStartDate: LocalDate;
+}
+
+export interface Asset extends Omit<AssetV4, 'lifecycleStatus' | 'serviceStartDate'> {
+  lifecycleStatus: LifecycleStatus;
+  serviceStartDate: LocalDate | null;
 }
 
 export interface Category {
@@ -88,9 +94,14 @@ export interface BackupV3 extends Omit<BackupV2, 'schemaVersion' | 'assets'> {
 
 export interface BackupV4 extends Omit<BackupV3, 'schemaVersion' | 'assets'> {
   schemaVersion: 4;
+  assets: AssetV4[];
+}
+
+export interface BackupV5 extends Omit<BackupV4, 'schemaVersion' | 'assets'> {
+  schemaVersion: 5;
   assets: Asset[];
 }
 
-export interface BackupImport extends BackupV4 {
-  readonly sourceSchemaVersion: 1 | 2 | 3 | 4;
+export interface BackupImport extends BackupV5 {
+  readonly sourceSchemaVersion: 1 | 2 | 3 | 4 | 5;
 }

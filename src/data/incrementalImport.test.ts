@@ -21,7 +21,7 @@ const refund: RevenueRecord = {
   amountCents: 12000, date: '2026-09-14', note: '测试回收', createdAt: timestamp, updatedAt: timestamp,
 };
 const candidate = () => ({
-  format: 'large-asset-cost-increment', schemaVersion: 2, exportedAt: timestamp, currency: 'CNY',
+  format: 'large-asset-cost-increment', schemaVersion: 3, exportedAt: timestamp, currency: 'CNY',
   categoryName: '日常球鞋', assets: [{ ...asset }, { ...refundAsset }], costRecords: [], revenueRecords: [{ ...refund }],
 });
 let database: AssetDatabase;
@@ -51,14 +51,14 @@ describe('incremental import', () => {
 
   it('upgrades v1 incremental assets to purchase-date service starts', () => {
     const previous = candidate();
-    previous.schemaVersion = 1 as 2;
+    previous.schemaVersion = 1 as 3;
     previous.assets = previous.assets.map(item => {
       const legacy = { ...item };
       delete (legacy as Partial<Asset>).serviceStartDate;
       return legacy as Asset;
     });
     const parsed = parseIncrementalImport(JSON.stringify(previous), now);
-    expect(parsed.schemaVersion).toBe(2);
+    expect(parsed.schemaVersion).toBe(3);
     expect(parsed.assets.map(item => item.serviceStartDate)).toEqual(['2026-09-13', '2026-09-13']);
   });
 

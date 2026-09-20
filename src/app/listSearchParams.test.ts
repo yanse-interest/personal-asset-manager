@@ -4,6 +4,7 @@ import { readAssetSort, readCategoryFilter, readStatusFilter, updateListSearchPa
 describe('list search params', () => {
   it('restores valid filters and falls back safely for invalid values', () => {
     expect(readStatusFilter(new URLSearchParams('status=retired'), 'active')).toBe('retired');
+    expect(readStatusFilter(new URLSearchParams('status=pending'), 'active')).toBe('pending');
     expect(readStatusFilter(new URLSearchParams('status=unknown'), 'active')).toBe('active');
     expect(readCategoryFilter(new URLSearchParams('category=kitchen'))).toBe('kitchen');
     expect(readCategoryFilter(new URLSearchParams())).toBe('all');

@@ -1,6 +1,6 @@
 import { localToday } from '../domain/dates';
-import type { Asset, AssetV2, AssetV3, BackupImport, BackupV1, BackupV2, BackupV3, BackupV4, Category, CostRecord, LegacyAssetV1, RevenueRecord } from '../domain/types';
-import { MAX_CATEGORIES, MAX_RECORDS, validateAsset, validateAssetV2, validateAssetV3, validateCategory, validateCostRecord, validateInstant, validateLegacyAssetV1, validateRevenueRecord } from '../domain/validation';
+import type { Asset, AssetV2, AssetV3, AssetV4, BackupImport, BackupV1, BackupV2, BackupV3, BackupV4, BackupV5, Category, CostRecord, LegacyAssetV1, RevenueRecord } from '../domain/types';
+import { MAX_CATEGORIES, MAX_RECORDS, validateAsset, validateAssetV2, validateAssetV3, validateAssetV4, validateCategory, validateCostRecord, validateInstant, validateLegacyAssetV1, validateRevenueRecord } from '../domain/validation';
 import { db, type AssetDatabase } from './db';
 
 export const MAX_BACKUP_BYTES = 80 * 1024 * 1024;
@@ -36,7 +36,7 @@ function safeAdd(sum: number, value: number, path: string): number {
   if (!Number.isSafeInteger(result)) throw new Error(`${path}: 金额合计超出安全整数范围`);
   return result;
 }
-function validateEnvelope(root: Record<string, unknown>, version: 1 | 2 | 3 | 4): string {
+function validateEnvelope(root: Record<string, unknown>, version: 1 | 2 | 3 | 4 | 5): string {
   exactFields(root, version === 1 ? V1_ROOT_FIELDS : V2_ROOT_FIELDS, 'backup');
   if (root.format !== FORMAT) throw new Error('backup.format: 未知备份格式');
   if (root.schemaVersion !== version) throw new Error('backup.schemaVersion: 不支持的备份版本');
@@ -124,12 +124,31 @@ export function validateBackupV4(value: unknown, now = new Date()): BackupV4 {
     if (categoryNames.has(category.name)) throw new Error(`${path}.name: 类别名称重复`); categoryNames.add(category.name); return category;
   });
   const assetIds = new Set<string>();
+  const assets: AssetV4[] = rawAssets.map((raw, index) => {
+    const path = `backup.assets[${index}]`; const asset = atPath(path, 'asset', () => validateAssetV4(raw, today)); uniqueId(asset.id, assetIds, path);
+    if (asset.categoryId !== null && !categoryIds.has(asset.categoryId)) throw new Error(`${path}.categoryId: 引用的类别不存在`); return asset;
+  });
+  const records = validateRecords(rawCosts, rawRevenues, assets, today);
+  return { format: FORMAT, schemaVersion: 4, exportedAt, currency: 'CNY', assets, categories, ...records };
+}
+
+export function validateBackupV5(value: unknown, now = new Date()): BackupV5 {
+  const today = localToday(now); const root = object(value, 'backup'); const exportedAt = validateEnvelope(root, 5);
+  const rawAssets = array(root.assets, 'backup.assets'); const rawCategories = array(root.categories, 'backup.categories');
+  const rawCosts = array(root.costRecords, 'backup.costRecords'); const rawRevenues = array(root.revenueRecords, 'backup.revenueRecords');
+  if (rawCategories.length > MAX_CATEGORIES) throw new Error(`backup.categories: 类别不得超过 ${MAX_CATEGORIES} 条`);
+  const categoryIds = new Set<string>(); const categoryNames = new Set<string>();
+  const categories: Category[] = rawCategories.map((raw, index) => {
+    const path = `backup.categories[${index}]`; const category = atPath(path, 'category', () => validateCategory(raw)); uniqueId(category.id, categoryIds, path);
+    if (categoryNames.has(category.name)) throw new Error(`${path}.name: 类别名称重复`); categoryNames.add(category.name); return category;
+  });
+  const assetIds = new Set<string>();
   const assets: Asset[] = rawAssets.map((raw, index) => {
     const path = `backup.assets[${index}]`; const asset = atPath(path, 'asset', () => validateAsset(raw, today)); uniqueId(asset.id, assetIds, path);
     if (asset.categoryId !== null && !categoryIds.has(asset.categoryId)) throw new Error(`${path}.categoryId: 引用的类别不存在`); return asset;
   });
   const records = validateRecords(rawCosts, rawRevenues, assets, today);
-  return { format: FORMAT, schemaVersion: 4, exportedAt, currency: 'CNY', assets, categories, ...records };
+  return { format: FORMAT, schemaVersion: 5, exportedAt, currency: 'CNY', assets, categories, ...records };
 }
 
 function upgradeV1(backup: BackupV1): BackupV2 {
@@ -141,13 +160,17 @@ function upgradeV2(backup: BackupV2): BackupV3 {
 function upgradeV3(backup: BackupV3): BackupV4 {
   return { ...backup, schemaVersion: 4, assets: backup.assets.map(asset => ({ ...asset, serviceStartDate: asset.purchaseDate })) };
 }
+function upgradeV4(backup: BackupV4): BackupV5 {
+  return { ...backup, schemaVersion: 5, assets: backup.assets.map(asset => ({ ...asset })) };
+}
 export function validateBackupImport(value: unknown, now = new Date()): BackupImport {
   const root = object(value, 'backup');
   const sourceSchemaVersion = root.schemaVersion;
-  const data = sourceSchemaVersion === 1 ? validateBackupV4(upgradeV3(validateBackupV3(upgradeV2(validateBackupV2(upgradeV1(validateBackupV1(value, now)), now)), now)), now)
-    : sourceSchemaVersion === 2 ? validateBackupV4(upgradeV3(validateBackupV3(upgradeV2(validateBackupV2(value, now)), now)), now)
-      : sourceSchemaVersion === 3 ? validateBackupV4(upgradeV3(validateBackupV3(value, now)), now)
-        : sourceSchemaVersion === 4 ? validateBackupV4(value, now) : null;
+  const data = sourceSchemaVersion === 1 ? validateBackupV5(upgradeV4(validateBackupV4(upgradeV3(validateBackupV3(upgradeV2(validateBackupV2(upgradeV1(validateBackupV1(value, now)), now)), now)), now)), now)
+    : sourceSchemaVersion === 2 ? validateBackupV5(upgradeV4(validateBackupV4(upgradeV3(validateBackupV3(upgradeV2(validateBackupV2(value, now)), now)), now)), now)
+      : sourceSchemaVersion === 3 ? validateBackupV5(upgradeV4(validateBackupV4(upgradeV3(validateBackupV3(value, now)), now)), now)
+        : sourceSchemaVersion === 4 ? validateBackupV5(upgradeV4(validateBackupV4(value, now)), now)
+          : sourceSchemaVersion === 5 ? validateBackupV5(value, now) : null;
   if (data) {
     Object.defineProperty(data, 'sourceSchemaVersion', { value: sourceSchemaVersion, enumerable: false });
     return data as BackupImport;
@@ -174,7 +197,7 @@ export async function exportBackup(database: AssetDatabase = db, now = new Date(
     assets: await database.assets.toArray(), categories: await database.categories.toArray(), costRecords: await database.costRecords.toArray(), revenueRecords: await database.revenueRecords.toArray(),
   }));
   const byId = <T extends { id: string }>(items: T[]) => items.sort((a, b) => a.id.localeCompare(b.id));
-  const backup: BackupV4 = { format: FORMAT, schemaVersion: 4, exportedAt: now.toISOString(), currency: 'CNY', assets: byId(snapshot.assets), categories: byId(snapshot.categories), costRecords: byId(snapshot.costRecords), revenueRecords: byId(snapshot.revenueRecords) };
+  const backup: BackupV5 = { format: FORMAT, schemaVersion: 5, exportedAt: now.toISOString(), currency: 'CNY', assets: byId(snapshot.assets), categories: byId(snapshot.categories), costRecords: byId(snapshot.costRecords), revenueRecords: byId(snapshot.revenueRecords) };
   const json = JSON.stringify(backup); if (new TextEncoder().encode(json).byteLength > MAX_BACKUP_BYTES) throw new Error('backup: 导出文件超过 80 MiB');
   const datePart = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('');
   const timePart = [now.getHours(), now.getMinutes(), now.getSeconds()].map(value => String(value).padStart(2, '0')).join('');
