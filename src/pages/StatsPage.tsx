@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router';
 import { AssetIcon } from '../components/AssetIcon';
 import { getDashboardSnapshot } from '../data/queries';
-import { categoryInsights, ledgerTotals, longestAssetSummaries, sortAssetSummaries, statusNames, summarizeAssets, valueRankingCandidates } from '../domain/ledgers';
+import { activeDailyCostCents, categoryInsights, ledgerTotals, longestAssetSummaries, sortAssetSummaries, statusNames, summarizeAssets, valueRankingCandidates } from '../domain/ledgers';
 import { formatCents, formatRatio } from '../domain/money';
 import { useToday } from '../hooks/useToday';
 
@@ -24,6 +24,8 @@ export function StatsPage() {
   const totalServiceDays = summaries.reduce((sum, item) => sum + item.values.serviceDays, 0);
   const purchaseTotal = summaries.reduce((sum, item) => sum + item.values.purchaseCostCents, 0);
   const dayItems = summaries.filter(item => item.asset.costMode === 'day');
+  const activeDayCount = dayItems.filter(item => item.asset.lifecycleStatus === 'active' && item.values.costPerDay !== null).length;
+  const dailyCost = activeDailyCostCents(summaries);
   const useItems = summaries.filter(item => item.asset.costMode === 'use');
   const totalUsage = useItems.reduce((sum, item) => sum + item.asset.usageCount, 0);
   const mostUsed = [...useItems].sort((left, right) => right.asset.usageCount - left.asset.usageCount || left.asset.id.localeCompare(right.asset.id))[0];
@@ -39,7 +41,7 @@ export function StatsPage() {
 
     <div className="stats-hero"><small>仍在日常使用</small><div><strong>{active} / {summaries.length}</strong><span>件 · {activeRatio}%</span></div><div className="status-bar"><i style={{ width: `${summaries.length ? pending / summaries.length * 100 : 0}%` }}/><i style={{ width: `${summaries.length ? active / summaries.length * 100 : 0}%` }}/><i style={{ width: `${summaries.length ? retired / summaries.length * 100 : 0}%` }}/><i style={{ width: `${summaries.length ? sold / summaries.length * 100 : 0}%` }}/></div><div className="stats-legend"><div><small>待服役</small><strong>{pending} 件</strong></div><div><small>服役中</small><strong>{active} 件</strong></div><div><small>已退役</small><strong>{retired} 件</strong></div><div><small>已卖出</small><strong>{sold} 件</strong></div></div></div>
 
-    <div className="stats-card"><h2>投入概览</h2><div className="stats-metric-grid"><div><small>累计购置</small><strong>{formatCents(purchaseTotal)}</strong></div><div><small>全部投入</small><strong>{formatCents(totals.totalCostCents)}</strong></div><div><small>累计收益</small><strong>{formatCents(totals.revenueCents)}</strong></div><div><small>当前净投入</small><strong>{formatCents(totals.netCostCents)}</strong></div></div></div>
+    <div className="stats-card"><h2>投入概览</h2><div className="stats-metric-grid"><div><small>累计购置</small><strong>{formatCents(purchaseTotal)}</strong></div><div><small>全部投入</small><strong>{formatCents(totals.totalCostCents)}</strong></div><div><small>累计收益</small><strong>{formatCents(totals.revenueCents)}</strong></div><div><small>当前净投入</small><strong>{formatCents(totals.netCostCents)}</strong></div><div><small>按天好物合计日均</small><strong>{formatCents(dailyCost)} / 天</strong></div></div><small className="stats-rule">仅计入服役中的按天好物，共 {activeDayCount} 件；各件净投入除以计费天数后相加。</small></div>
 
     <div className="stats-card"><h2>陪伴与使用</h2><div className="stats-metric-grid"><div><small>平均陪伴</small><strong>{averageDays.toLocaleString('zh-CN')} 天</strong></div><div><small>累计陪伴</small><strong>{totalServiceDays.toLocaleString('zh-CN')} 天</strong></div><div><small>按日观察</small><strong>{dayItems.length} 件</strong></div><div><small>按次观察</small><strong>{useItems.length} 件</strong></div></div>{useItems.length > 0 && <p className="stats-note">按次好物累计记录 {totalUsage.toLocaleString('zh-CN')} 次{mostUsed && mostUsed.asset.usageCount > 0 ? `；使用最多的是“${mostUsed.asset.name}”，共 ${mostUsed.asset.usageCount.toLocaleString('zh-CN')} 次。` : '。'}</p>}</div>
 

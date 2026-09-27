@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryInsights, ledgerTotals, longestAssetSummaries, sortAssetSummaries, statuses, summarizeAssets, valueRankingCandidates } from './ledgers';
+import { activeDailyCostCents, categoryInsights, ledgerTotals, longestAssetSummaries, sortAssetSummaries, statuses, summarizeAssets, valueRankingCandidates } from './ledgers';
 import type { Asset, Category, CostRecord, RevenueRecord } from './types';
 
 const timestamp = '2026-09-13T08:00:00.000Z';
@@ -48,5 +48,17 @@ describe('ledger partitions', () => {
     expect(valueRankingCandidates(summaries).map(item => item.asset.id)).toEqual([ids[0]]);
     const retiredWithoutDate = summaries.map(item => item.asset.id === ids[1] ? { ...item, asset: { ...item.asset, endedDate: null } } : item);
     expect(valueRankingCandidates(retiredWithoutDate).map(item => item.asset.id)).toEqual([ids[0], ids[1]]);
+  });
+
+  it('sums exact daily costs for active day-mode assets only', () => {
+    const summaries = summarizeAssets({ assets, categories: [category], costs, revenues }, '2026-09-14');
+    const activeDay = summaries[0]!;
+    const activeUse = { ...activeDay, asset: { ...activeDay.asset, costMode: 'use' as const } };
+    const anotherDay = { ...activeDay, values: { ...activeDay.values, costPerDay: { numeratorCents: 1, denominator: 2 } } };
+    const pendingDay = { ...anotherDay, asset: { ...anotherDay.asset, lifecycleStatus: 'pending' as const } };
+    expect(activeDailyCostCents([activeDay, activeUse, summaries[1]!, summaries[2]!, pendingDay])).toBe(5_000);
+    expect(activeDailyCostCents([anotherDay, anotherDay])).toBe(1);
+    expect(activeDailyCostCents([{ ...anotherDay, values: { ...anotherDay.values, costPerDay: { numeratorCents: -1, denominator: 2 } } }, anotherDay])).toBe(0);
+    expect(activeDailyCostCents([])).toBe(0);
   });
 });

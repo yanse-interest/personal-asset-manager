@@ -78,6 +78,10 @@ h1, h2, h3 { line-height: 1.2; }
 .overview-facts div, .status-facts div, .stats-legend div { display: grid; gap: 4px; min-width: 0; }
 .overview-facts small, .status-facts small, .stats-legend small { color: var(--muted); font-size: 9px; }
 .overview-facts strong, .status-facts strong, .stats-legend strong { overflow-wrap: anywhere; font-size: 12px; font-variant-numeric: tabular-nums; }
+.daily-cost-summary { display: grid; gap: 4px; padding: 12px; border-radius: 17px; background: var(--surface-2); }
+.daily-cost-summary div { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.daily-cost-summary small { color: var(--muted); font-size: 9px; }
+.daily-cost-summary strong { font-size: 17px; font-variant-numeric: tabular-nums; }
 .active-progress { display: grid; gap: 7px; }
 .active-progress > div:first-child { display: flex; justify-content: space-between; color: var(--muted); font-size: 9px; }
 .active-progress strong { color: var(--ink); }

@@ -26,6 +26,30 @@ export function ledgerTotals(items: readonly AssetSummary[]): LedgerTotals {
   return items.reduce((sum, item) => ({ count: sum.count + 1, totalCostCents: add(sum.totalCostCents, item.values.totalCostCents), revenueCents: add(sum.revenueCents, item.values.revenueCents), netCostCents: add(sum.netCostCents, item.values.netCostCents) }), { count: 0, totalCostCents: 0, revenueCents: 0, netCostCents: 0 });
 }
 
+function gcd(left: bigint, right: bigint): bigint {
+  while (right !== 0n) [left, right] = [right, left % right];
+  return left < 0n ? -left : left;
+}
+
+export function activeDailyCostCents(items: readonly AssetSummary[]): number {
+  let numerator = 0n;
+  let denominator = 1n;
+  for (const item of items) {
+    if (item.asset.lifecycleStatus !== 'active' || item.asset.costMode !== 'day' || item.values.costPerDay === null) continue;
+    const ratio = item.values.costPerDay;
+    numerator = numerator * BigInt(ratio.denominator) + BigInt(ratio.numeratorCents) * denominator;
+    denominator *= BigInt(ratio.denominator);
+    const divisor = gcd(numerator, denominator);
+    numerator /= divisor;
+    denominator /= divisor;
+  }
+  const magnitude = numerator < 0n ? -numerator : numerator;
+  const rounded = (magnitude + denominator / 2n) / denominator;
+  const cents = Number(numerator < 0n ? -rounded : rounded);
+  if (!Number.isSafeInteger(cents)) throw new Error('金额合计超出安全整数范围');
+  return cents;
+}
+
 export function sortAssetSummaries(items: readonly AssetSummary[], sort: AssetSort): AssetSummary[] {
   if (sort === 'default') return [...items];
   const byUse = sort.startsWith('use-');
