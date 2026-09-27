@@ -78,14 +78,17 @@ revenue = sum(RevenueRecord.amountCents)
 totalCost = purchaseCost + additionalCost + consumableCost
 netCost = totalCost - revenue
 
-daysOwned = max(1, calendarOrdinal(today) - calendarOrdinal(purchaseDate) + 1)
-costPerDay = netCost / daysOwned
+serviceEnd = endedDate ?? today  // 服役中以 today 为准；已结束且无结束日期也以 today 为准
+serviceDays = serviceStartDate == null ? 0 : max(1, calendarOrdinal(serviceEnd) - calendarOrdinal(serviceStartDate) + 1)
+costPerDay = serviceDays > 0 ? netCost / serviceDays : null
 costPerUse = usageCount > 0 ? netCost / usageCount : null
 ```
 
-上述计算金额单位均为分；显示时再换算为元。`calendarOrdinal` 将合法年月日映射为 UTC 日序号，只用于自然日差，不把本地午夜的毫秒相减；避免夏令时 23/25 小时影响。当天购买 daysOwned=1，昨天=2。正常录入/导入拒绝未来购买日期；系统时钟回拨导致已存购买日期晚于 today 时显示时钟提示，daysOwned 暂取 1，不修改数据。
+上述计算金额单位均为分；显示时再换算为元。`calendarOrdinal` 将合法年月日映射为 UTC 日序号，只用于自然日差，不把本地午夜的毫秒相减；避免夏令时 23/25 小时影响。开始使用当天 serviceDays=1，次日=2；待服役为 0。正常录入/导入拒绝未来业务日期；系统时钟回拨导致已存日期晚于 today 时显示时钟提示，天数最低按 1 天显示，不修改数据。
 
-比率保留 `(netCostCents, denominator)`，展示可用 BigInt 整数除法实现“绝对值四舍五入到分，恢复符号”，再格式化人民币两位小数；不存 BigInt 到 JSON。普通金额同样显示两位小数；-0 统一显示 0。不把已舍入比率相加或写库；首页只合计投入/收益/净投入，不提供把不同分母日均/次均相加的误导总均值。
+比率保留 `(netCostCents, denominator)`，展示可用 BigInt 整数除法实现“绝对值四舍五入到分，恢复符号”，再格式化人民币两位小数；不存 BigInt 到 JSON。普通金额同样显示两位小数；-0 统一显示 0。不把已舍入比率相加或写库。
+
+现行“按天好物合计日均”仅针对服役中、按天、已有服役天数的好物：逐件计算 `netCostCents / serviceDays`，将原始比率相加后统一舍入到分。它表示当前这组好物合计每天摊薄的成本，不是今天实际发生的支出，也不是 `总净投入 / 总服役天数` 所表示的平均每件每天成本。待服役、已退役、已卖出及按次好物不计入；首页随类别筛选变化，统计页使用全库范围。单件日均从开始使用日期起算，结束后分母停在结束日期。合计日均和单件比率均不写入数据库或备份。
 
 金额输入接受去首尾空格后的 `0` 或无前导零的正整数，可带 1–2 位小数；例 `1000`、`1000.5`、`0.01`。拒绝负数、科学计数法、逗号、货币符号、超过两位小数、空值及 `01`。分割整数/小数字符串、右补两位后转换并校验，不用浮点乘 100。购买价允许 0，流水不允许 0。低于 ¥1000 仅提示建议范围，不阻止保存。
 
