@@ -152,7 +152,8 @@ try {
   await app.evaluate('location.hash = "#/stats"');
   await waitFor(app, 'Boolean(document.querySelector(".distribution-row")) && Boolean(document.querySelector(".category-insights a"))', '丰富统计');
   if (!await app.evaluate('[...document.querySelectorAll(".distribution-row")].some(row => row.textContent.includes("未分类") && row.querySelector("strong")?.textContent === "2")')) throw new Error('分类分布遗漏未分类资产');
-  if (!await app.evaluate('document.body.innerText.includes("投入概览") && document.body.innerText.includes("陪伴与使用") && document.body.innerText.includes("当前低成本代表")')) throw new Error('统计页缺少投入、陪伴或成本指标');
+  if (!await app.evaluate('document.body.innerText.includes("投入概览") && document.body.innerText.includes("陪伴与使用") && document.body.innerText.includes("成本最高与最低")')) throw new Error('统计页缺少投入、陪伴或成本指标');
+  if (!await app.evaluate('document.querySelectorAll(".value-leaders > *").length === 4 && ["日均最低", "日均最高", "次均最低", "次均最高"].every(label => document.querySelector(".value-leaders")?.innerText.includes(label))')) throw new Error('统计页未展示完整的按天、按次高低成本结果');
   if (!await app.evaluate('document.querySelector(".category-insights a")?.textContent.includes("陪伴最久") && document.querySelector(".category-insights a")?.textContent.includes("天")')) throw new Error('分类洞察缺少陪伴最久好物');
   await app.evaluate('location.hash = "#/assets/new"');
   await waitFor(app, `Boolean(${labelInput('名称')})`, '写入异常表单');

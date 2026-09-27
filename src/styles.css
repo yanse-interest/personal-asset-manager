@@ -162,6 +162,8 @@ h1, h2, h3 { line-height: 1.2; }
 .distribution-row strong { text-align: right; }
 .value-leaders { display: grid; gap: 8px; }
 .value-leaders a { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 11px; border-radius: 17px; background: var(--surface-2); text-decoration: none; }
+.value-leader-empty { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 11px; border-radius: 17px; background: var(--surface-2); }
+.value-leader-empty span { color: var(--muted); font-size: 10px; }
 .value-leaders a > span { display: grid; place-items: center; width: 42px; height: 42px; }
 .value-leaders a > div { display: grid; min-width: 0; }
 .value-leaders small { color: var(--muted); font-size: 9px; }
