@@ -1,3 +1,5 @@
+import extraThreeDGroups from './extra3DIcons.json';
+
 export type AssetIconKind = '3d' | 'emoji' | 'line';
 export interface AssetIconChoice { id: string; kind: AssetIconKind; category: string; label: string; value: string }
 
@@ -20,6 +22,26 @@ const lineGroups: Record<string, string[]> = {
   影音: 'aperture image images film clapperboard projector focus scan-line gallery-horizontal album music guitar'.split(' '),
 };
 
+const specialLineIcons: { value: string; category: string; label: string }[] = [
+  { value: 'desk', category: '家具', label: '书桌 办公桌 桌子' },
+  { value: 'gaming-desk', category: '家具', label: '电竞桌 游戏桌' },
+  { value: 'side-table', category: '家具', label: '边桌 边几' },
+  { value: 'bedside-cabinet', category: '家具', label: '床边柜 床头柜' },
+  { value: 'coffee-table', category: '家具', label: '茶几' },
+  { value: 'dining-table', category: '家具', label: '餐桌' },
+  { value: 'bookshelf', category: '家具', label: '书架' },
+  { value: 'wardrobe', category: '家具', label: '衣柜' },
+  { value: 'shoe-rack', category: '家具', label: '鞋架' },
+  { value: 'display-shelf', category: '家具', label: '置物架 展示架' },
+  { value: 'monitor-riser', category: '数码', label: '显示器增高架 显示器支架' },
+  { value: 'laptop-stand', category: '数码', label: '笔记本支架 电脑支架' },
+  { value: 'adjustable-laptop-stand', category: '数码', label: '可调节笔记本支架 升降电脑支架' },
+  { value: 'folding-laptop-stand', category: '数码', label: '折叠笔记本支架' },
+  { value: 'vertical-laptop-stand', category: '数码', label: '立式笔记本支架 竖放电脑支架' },
+  { value: 'microphone-stand', category: '影音', label: '麦克风支架 话筒支架' },
+  { value: 'microphone-boom-arm', category: '影音', label: '麦克风悬臂支架 桌面话筒架' },
+];
+
 const lineLabels: Record<string, string> = {
   laptop: '笔记本电脑', smartphone: '手机', tablet: '平板电脑', monitor: '显示器', keyboard: '键盘', mouse: '鼠标',
   router: '路由器', wifi: '无线网络', printer: '打印机', camera: '相机', video: '摄像机', headphones: '耳机',
@@ -34,6 +56,7 @@ const lineLabels: Record<string, string> = {
 
 function categoryOf3D(name: string): string {
   const value = name.toLowerCase();
+  if (/^bed$|^chair$|^couch and lamp$/.test(value)) return '家具';
   if (/computer|laptop|phone|keyboard|pager|printer|battery|plug|disk|television|watch/.test(value)) return '数码';
   if (/airplane|ambulance|lorry|automobile|bicycle|train|bus|boat|scooter|truck|car/.test(value)) return '交通';
   if (/bathtub|bed|basket|broom|bucket|chair|couch|house|building|light bulb/.test(value)) return '家居';
@@ -44,8 +67,10 @@ function categoryOf3D(name: string): string {
 }
 export const assetIcons: AssetIconChoice[] = [
   ...threeDNames.map(name => ({ id: `3d:${name.toLowerCase().replaceAll(' ', '_')}`, kind: '3d' as const, category: categoryOf3D(name), label: name, value: name.toLowerCase().replaceAll(' ', '_') })),
+  ...Object.entries(extraThreeDGroups).flatMap(([category, entries]) => entries.map(entry => { const name = entry[0]!; return { id: `3d:${name.toLowerCase().replaceAll(' ', '_')}`, kind: '3d' as const, category, label: entry[1]!, value: name.toLowerCase().replaceAll(' ', '_') }; })),
   ...Object.entries(emojiGroups).flatMap(([category, values]) => values.map((value, index) => ({ id: `emoji:${category}:${index}`, kind: 'emoji' as const, category, label: `${category} ${value}`, value }))),
   ...Object.entries(lineGroups).flatMap(([category, values]) => values.map(value => ({ id: `line:${value}`, kind: 'line' as const, category, label: lineLabels[value] ?? `${category} ${value}`, value }))),
+  ...specialLineIcons.map(({ value, category, label }) => ({ id: `line:${value}`, kind: 'line' as const, category, label, value })),
 ];
 export const assetIconById = new Map(assetIcons.map(item => [item.id, item]));
 export function isAssetIconId(value: unknown): value is string { return typeof value === 'string' && assetIconById.has(value); }
@@ -53,6 +78,17 @@ export function isAssetIconId(value: unknown): value is string { return typeof v
 export function automaticAssetIconId(name: string, categoryName?: string | null): string | null {
   const value = `${name} ${categoryName ?? ''}`.toLowerCase();
   const rules: [RegExp, string][] = [
+    [/麦克风.*(悬臂|桌面).*支架|话筒.*悬臂/, 'microphone-boom-arm'],
+    [/麦克风支架|话筒支架|mic(?:rophone)? stand/, 'microphone-stand'],
+    [/显示器.*(增高架|支架)|monitor riser/, 'monitor-riser'],
+    [/立式.*笔记本.*支架|竖放.*电脑.*支架|vertical laptop stand/, 'vertical-laptop-stand'],
+    [/可调.*笔记本.*支架|升降.*电脑.*支架|adjustable laptop stand/, 'adjustable-laptop-stand'],
+    [/折叠.*笔记本.*支架|folding laptop stand/, 'folding-laptop-stand'],
+    [/笔记本支架|电脑支架|laptop stand/, 'laptop-stand'],
+    [/床边柜|床头柜|nightstand|bedside cabinet/, 'bedside-cabinet'],
+    [/边桌|边几|side table/, 'side-table'],
+    [/电竞桌|游戏桌|gaming desk/, 'gaming-desk'],
+    [/书桌|办公桌|desk/, 'desk'],
     [/扫地机器人|扫地机|robot vacuum/, 'robot-vacuum'], [/净饮水机|净水机|饮水机|净水器|water purifier/, 'water-purifier'],
     [/跑步机|treadmill/, 'treadmill'], [/洗衣机|washing machine/, 'washing-machine'], [/微波炉|microwave/, 'microwave'],
     [/空气净化器|air purifier/, 'air-purifier'], [/加湿器|humidifier/, 'humidifier'], [/取暖器|暖风机|heater/, 'heater'],

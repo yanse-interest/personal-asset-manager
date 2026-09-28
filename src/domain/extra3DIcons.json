@@ -1,0 +1,658 @@
+{
+  "家居": [
+    [
+      "Door",
+      "门"
+    ],
+    [
+      "Window",
+      "窗户"
+    ],
+    [
+      "Mirror",
+      "镜子"
+    ],
+    [
+      "Toilet",
+      "马桶"
+    ],
+    [
+      "Shower",
+      "淋浴"
+    ],
+    [
+      "Soap",
+      "香皂"
+    ],
+    [
+      "Sponge",
+      "海绵"
+    ],
+    [
+      "Toothbrush",
+      "牙刷"
+    ],
+    [
+      "Razor",
+      "剃须刀"
+    ],
+    [
+      "Lotion bottle",
+      "洗护瓶"
+    ],
+    [
+      "Potted plant",
+      "盆栽"
+    ],
+    [
+      "Candle",
+      "蜡烛"
+    ],
+    [
+      "Teddy bear",
+      "玩偶"
+    ],
+    [
+      "Thermometer",
+      "温度计"
+    ],
+    [
+      "Umbrella",
+      "雨伞"
+    ],
+    [
+      "Closed umbrella",
+      "折叠伞"
+    ],
+    [
+      "Mouse trap",
+      "捕鼠器"
+    ]
+  ],
+  "厨具": [
+    [
+      "Cooking",
+      "烹饪"
+    ],
+    [
+      "Pot of food",
+      "炖锅"
+    ],
+    [
+      "Teapot",
+      "茶壶"
+    ],
+    [
+      "Bento box",
+      "便当盒"
+    ],
+    [
+      "Fork and knife",
+      "刀叉"
+    ],
+    [
+      "Spoon",
+      "勺子"
+    ],
+    [
+      "Chopsticks",
+      "筷子"
+    ],
+    [
+      "Glass of milk",
+      "玻璃杯"
+    ],
+    [
+      "Cup with straw",
+      "吸管杯"
+    ],
+    [
+      "Baby bottle",
+      "奶瓶"
+    ],
+    [
+      "Jar",
+      "储物罐"
+    ],
+    [
+      "Salt",
+      "盐罐"
+    ],
+    [
+      "Wine glass",
+      "酒杯"
+    ],
+    [
+      "Tumbler glass",
+      "水杯"
+    ],
+    [
+      "Clinking glasses",
+      "高脚杯"
+    ]
+  ],
+  "数码": [
+    [
+      "Telephone",
+      "电话"
+    ],
+    [
+      "Telephone receiver",
+      "电话听筒"
+    ],
+    [
+      "Fax machine",
+      "传真机"
+    ],
+    [
+      "Video camera",
+      "摄像机"
+    ],
+    [
+      "Movie camera",
+      "电影摄影机"
+    ],
+    [
+      "Film projector",
+      "放映机"
+    ],
+    [
+      "Optical disk",
+      "光盘"
+    ],
+    [
+      "Videocassette",
+      "录像带"
+    ],
+    [
+      "Trackball",
+      "轨迹球"
+    ],
+    [
+      "Satellite",
+      "卫星"
+    ],
+    [
+      "Antenna bars",
+      "信号天线"
+    ],
+    [
+      "Mobile phone with arrow",
+      "手机传输"
+    ],
+    [
+      "Control knobs",
+      "控制旋钮"
+    ],
+    [
+      "Stopwatch",
+      "秒表"
+    ],
+    [
+      "Timer clock",
+      "计时器"
+    ]
+  ],
+  "交通": [
+    [
+      "Taxi",
+      "出租车"
+    ],
+    [
+      "Sport utility vehicle",
+      "越野车"
+    ],
+    [
+      "Minibus",
+      "小巴士"
+    ],
+    [
+      "Fire engine",
+      "消防车"
+    ],
+    [
+      "Police car",
+      "警车"
+    ],
+    [
+      "Tractor",
+      "拖拉机"
+    ],
+    [
+      "Delivery truck",
+      "货车"
+    ],
+    [
+      "Motorcycle",
+      "摩托车"
+    ],
+    [
+      "Kick scooter",
+      "滑板车"
+    ],
+    [
+      "Speedboat",
+      "快艇"
+    ],
+    [
+      "Ship",
+      "轮船"
+    ],
+    [
+      "Ferry",
+      "渡轮"
+    ],
+    [
+      "Sailboat",
+      "帆船"
+    ],
+    [
+      "Tram",
+      "有轨电车"
+    ],
+    [
+      "Metro",
+      "地铁"
+    ],
+    [
+      "Locomotive",
+      "蒸汽火车"
+    ],
+    [
+      "High-speed train",
+      "高铁"
+    ],
+    [
+      "Helicopter",
+      "直升机"
+    ],
+    [
+      "Rocket",
+      "火箭"
+    ],
+    [
+      "Auto rickshaw",
+      "三轮车"
+    ],
+    [
+      "Aerial tramway",
+      "缆车"
+    ],
+    [
+      "Suspension railway",
+      "空中轨道"
+    ],
+    [
+      "Railway car",
+      "列车车厢"
+    ],
+    [
+      "Light rail",
+      "轻轨"
+    ],
+    [
+      "Station",
+      "车站"
+    ],
+    [
+      "Fuel pump",
+      "加油机"
+    ]
+  ],
+  "运动": [
+    [
+      "Soccer ball",
+      "足球"
+    ],
+    [
+      "Volleyball",
+      "排球"
+    ],
+    [
+      "Tennis",
+      "网球"
+    ],
+    [
+      "Ping pong",
+      "乒乓球"
+    ],
+    [
+      "Fishing pole",
+      "钓鱼竿"
+    ],
+    [
+      "Skateboard",
+      "滑板"
+    ],
+    [
+      "Sled",
+      "雪橇"
+    ],
+    [
+      "Cricket game",
+      "板球"
+    ],
+    [
+      "Field hockey",
+      "草地曲棍球"
+    ],
+    [
+      "Ice skate",
+      "冰鞋"
+    ],
+    [
+      "Running shoe",
+      "跑鞋"
+    ],
+    [
+      "Martial arts uniform",
+      "武术服"
+    ],
+    [
+      "Goal net",
+      "球门"
+    ],
+    [
+      "Diving mask",
+      "潜水面罩"
+    ],
+    [
+      "Parachute",
+      "降落伞"
+    ],
+    [
+      "Kite",
+      "风筝"
+    ],
+    [
+      "Trophy",
+      "奖杯"
+    ]
+  ],
+  "工具": [
+    [
+      "Wrench",
+      "扳手"
+    ],
+    [
+      "Toolbox",
+      "工具箱"
+    ],
+    [
+      "Magnet",
+      "磁铁"
+    ],
+    [
+      "Straight ruler",
+      "直尺"
+    ],
+    [
+      "Triangular ruler",
+      "三角尺"
+    ],
+    [
+      "Plunger",
+      "皮搋子"
+    ],
+    [
+      "Clamp",
+      "夹具"
+    ],
+    [
+      "Construction",
+      "施工牌"
+    ],
+    [
+      "Fire extinguisher",
+      "灭火器"
+    ],
+    [
+      "Safety pin",
+      "安全别针"
+    ],
+    [
+      "Locked",
+      "锁"
+    ],
+    [
+      "Unlocked",
+      "开锁"
+    ],
+    [
+      "Wood",
+      "木材"
+    ],
+    [
+      "Oil drum",
+      "油桶"
+    ]
+  ],
+  "影音": [
+    [
+      "Violin",
+      "小提琴"
+    ],
+    [
+      "Trumpet",
+      "小号"
+    ],
+    [
+      "Drum",
+      "鼓"
+    ],
+    [
+      "Flute",
+      "长笛"
+    ],
+    [
+      "Artist palette",
+      "调色盘"
+    ],
+    [
+      "Performing arts",
+      "戏剧面具"
+    ],
+    [
+      "Film frames",
+      "电影胶片"
+    ],
+    [
+      "Musical note",
+      "音符"
+    ],
+    [
+      "Musical notes",
+      "乐谱"
+    ],
+    [
+      "Maracas",
+      "沙锤"
+    ],
+    [
+      "Long drum",
+      "长鼓"
+    ],
+    [
+      "Crystal ball",
+      "水晶球"
+    ]
+  ],
+  "办公": [
+    [
+      "Notebook",
+      "笔记本"
+    ],
+    [
+      "Ledger",
+      "账本"
+    ],
+    [
+      "Memo",
+      "便签"
+    ],
+    [
+      "Paperclip",
+      "回形针"
+    ],
+    [
+      "Pen",
+      "钢笔"
+    ],
+    [
+      "Crayon",
+      "蜡笔"
+    ],
+    [
+      "Pushpin",
+      "图钉"
+    ],
+    [
+      "File folder",
+      "文件夹"
+    ],
+    [
+      "Open book",
+      "打开的书"
+    ],
+    [
+      "Closed book",
+      "书本"
+    ],
+    [
+      "Page facing up",
+      "文档"
+    ],
+    [
+      "Receipt",
+      "收据"
+    ],
+    [
+      "Chart increasing",
+      "图表"
+    ],
+    [
+      "Envelope",
+      "信封"
+    ],
+    [
+      "Card index dividers",
+      "文件分隔卡"
+    ],
+    [
+      "Clipboard",
+      "剪贴板"
+    ],
+    [
+      "Bookmark",
+      "书签"
+    ],
+    [
+      "Name badge",
+      "工牌"
+    ]
+  ],
+  "服饰": [
+    [
+      "T-shirt",
+      "T 恤"
+    ],
+    [
+      "Jeans",
+      "牛仔裤"
+    ],
+    [
+      "Coat",
+      "外套"
+    ],
+    [
+      "Dress",
+      "连衣裙"
+    ],
+    [
+      "Gloves",
+      "手套"
+    ],
+    [
+      "Scarf",
+      "围巾"
+    ],
+    [
+      "Necktie",
+      "领带"
+    ],
+    [
+      "Socks",
+      "袜子"
+    ],
+    [
+      "Handbag",
+      "手提包"
+    ],
+    [
+      "Purse",
+      "钱包"
+    ],
+    [
+      "Crown",
+      "皇冠"
+    ],
+    [
+      "Ring",
+      "戒指"
+    ],
+    [
+      "Gem stone",
+      "宝石"
+    ],
+    [
+      "Sunglasses",
+      "太阳镜"
+    ]
+  ],
+  "户外": [
+    [
+      "Tent",
+      "帐篷"
+    ],
+    [
+      "Compass",
+      "指南针"
+    ],
+    [
+      "Mount fuji",
+      "山峰"
+    ],
+    [
+      "Evergreen tree",
+      "松树"
+    ],
+    [
+      "Deciduous tree",
+      "树木"
+    ],
+    [
+      "Seedling",
+      "幼苗"
+    ],
+    [
+      "Herb",
+      "香草"
+    ],
+    [
+      "Cactus",
+      "仙人掌"
+    ],
+    [
+      "Beach with umbrella",
+      "沙滩伞"
+    ],
+    [
+      "World map",
+      "世界地图"
+    ],
+    [
+      "Palm tree",
+      "棕榈树"
+    ]
+  ]
+}

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { assetIconById, automaticAssetIconId } from '../domain/iconCatalog';
 import { assetEmoji } from './AppIcon';
+import { SpecialLineIcon, specialLineIconNames } from './SpecialLineIcon';
 
 const lineIcons: Record<string, ComponentType<{ size?: number; strokeWidth?: number }>> = {
   laptop: Laptop, smartphone: Smartphone, tablet: Tablet, monitor: Monitor, keyboard: Keyboard, mouse: Mouse,
@@ -53,6 +54,7 @@ export function AssetIcon({ id, name = '', categoryName, size = 52 }: { id?: str
   if (item?.kind === 'line') {
     const Icon = lineIcons[item.value];
     if (Icon) return <Icon size={Math.round(size * .68)} strokeWidth={1.8} />;
+    if (specialLineIconNames.has(item.value)) return <SpecialLineIcon name={item.value} size={Math.round(size * .68)} strokeWidth={1.8} />;
   }
   return <span className="chosen-asset-emoji" aria-hidden="true" style={{ fontSize: size * .9 }}>{item?.kind === 'emoji' ? item.value : assetEmoji(name, categoryName)}</span>;
 }
