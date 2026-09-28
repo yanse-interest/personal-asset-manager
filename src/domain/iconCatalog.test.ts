@@ -26,6 +26,8 @@ describe('asset icon catalog', () => {
     expect(automaticAssetIconId('电竞桌')).toBe('line:gaming-desk');
     expect(automaticAssetIconId('床边柜')).toBe('line:bedside-cabinet');
     expect(automaticAssetIconId('客厅边桌')).toBe('line:side-table');
+    expect(automaticAssetIconId('人体工学办公椅')).toBe('line:ergonomic-chair');
+    expect(assetIconById.get('line:ergonomic-chair')?.category).toBe('家具');
     expect(automaticAssetIconId('显示器增高架')).toBe('line:monitor-riser');
     expect(automaticAssetIconId('折叠笔记本支架')).toBe('line:folding-laptop-stand');
     expect(automaticAssetIconId('麦克风支架')).toBe('line:microphone-stand');
