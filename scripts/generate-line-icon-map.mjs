@@ -1,0 +1,32 @@
+import { readFile, writeFile } from 'node:fs/promises';
+import * as lucide from 'lucide-react';
+
+// The names on the left are historic Fluent 3D selections. The names on the
+// right are their new, consistently outlined Lucide drawings.
+const pairs = `
+Abacus:Calculator|Accordion:PanelsTopLeft|Airplane:Plane|Alarm clock:AlarmClock|Ambulance:Ambulance|Anchor:Anchor|Articulated lorry:Truck|Automobile:Car|Axe:Axe|Backpack:Backpack|Badminton:CircleDot|Balance scale:Scale|Banjo:Guitar|Baseball:CircleDot|Basket:ShoppingBasket|Basketball:CircleDot|Bathtub:Bath|Battery:Battery|Bed:Bed|Bicycle:Bike|Billed cap:GraduationCap|Books:LibraryBig|Bottle with popping cork:Wine|Bowl with spoon:Soup|Bowling:CircleDot|Boxing glove:Hand|Brick:BrickWall|Briefcase:Briefcase|Broom:Brush|Bucket:PaintBucket|Bullet train:TrainFront|Bus:Bus|Calendar:Calendar|Camera with flash:Camera|Camera:Camera|Camping:TentTree|Canoe:Sailboat|Card file box:Archive|Carpentry saw:Construction|Chains:Link|Chair:Armchair|Chess pawn:CircleDot|Clapper board:Clapperboard|Classical building:Landmark|Computer disk:HardDrive|Computer mouse:Mouse|Couch and lamp:Sofa|Desktop computer:Monitor|Electric plug:Plug|Flashlight:Flashlight|Floppy disk:Save|Fountain pen:PenTool|Framed picture:Frame|Game die:Dice5|Gear:Settings|Guitar:Guitar|Hammer:Hammer|Headphone:Headphones|High-heeled shoe:Footprints|Hiking boot:Footprints|House:House|Joystick:Joystick|Key:Key|Keyboard:Keyboard|Kitchen knife:CookingPot|Ladder:Wand|Laptop:Laptop|Light bulb:Lightbulb|Watch:Watch|Loudspeaker:Speaker|Luggage:Luggage|Magnifying glass tilted left:Search|Microphone:Mic|Mobile phone:Smartphone|Money bag:Wallet|Motor boat:Ship|Motor scooter:Bike|Musical keyboard:Piano|Nut and bolt:Wrench|Office building:Building2|Pager:Radio|Paintbrush:Paintbrush|Pencil:Pencil|Pick:Pickaxe|Pickup truck:Truck|Printer:Printer|Radio:Radio|Racing car:CarFront|Roller skate:Footprints|Safety vest:ShieldCheck|Satellite antenna:SatelliteDish|Saxophone:Music2|Scissors:Scissors|Screwdriver:Drill|Shopping bags:ShoppingBag|Shopping cart:ShoppingCart|Skis:MountainSnow|Speaker high volume:Volume2|Studio microphone:MicVocal|Television:Tv
+Door:DoorClosed|Window:PanelsTopLeft|Mirror:ScanFace|Toilet:Toilet|Shower:ShowerHead|Soap:Droplets|Sponge:Square|Toothbrush:Brush|Razor:Scissors|Lotion bottle:Droplets|Potted plant:Flower2|Candle:Flame|Teddy bear:ToyBrick|Thermometer:Thermometer|Umbrella:Umbrella|Closed umbrella:Umbrella|Mouse trap:Mouse
+Cooking:CookingPot|Pot of food:Soup|Teapot:CupSoda|Bento box:Package|Fork and knife:Utensils|Spoon:Utensils|Chopsticks:UtensilsCrossed|Glass of milk:Milk|Cup with straw:CupSoda|Baby bottle:Baby|Jar:Package|Salt:CookingPot|Wine glass:Wine|Tumbler glass:GlassWater|Clinking glasses:Wine
+Telephone:Phone|Telephone receiver:PhoneCall|Fax machine:Printer|Video camera:Video|Movie camera:Clapperboard|Film projector:Projector|Optical disk:Disc3|Videocassette:Videotape|Trackball:Mouse|Satellite:Satellite|Antenna bars:Signal|Mobile phone with arrow:SmartphoneCharging|Control knobs:SlidersHorizontal|Stopwatch:Timer|Timer clock:AlarmClock
+Taxi:CarTaxiFront|Sport utility vehicle:CarFront|Minibus:BusFront|Fire engine:Truck|Police car:CarFront|Tractor:Tractor|Delivery truck:Truck|Motorcycle:Bike|Kick scooter:Bike|Speedboat:Ship|Ship:Ship|Ferry:Ship|Sailboat:Sailboat|Tram:TramFront|Metro:TrainFront|Locomotive:TrainFront|High-speed train:TrainFront|Helicopter:Plane|Rocket:Rocket|Auto rickshaw:CarFront|Aerial tramway:TramFront|Suspension railway:TrainFront|Railway car:TrainFront|Light rail:TramFront|Station:TrainFront|Fuel pump:Fuel
+Soccer ball:Goal|Volleyball:Volleyball|Tennis:CircleDot|Ping pong:CircleDot|Fishing pole:Fish|Skateboard:Footprints|Sled:MountainSnow|Cricket game:CircleDot|Field hockey:Goal|Ice skate:Footprints|Running shoe:Footprints|Martial arts uniform:Shirt|Goal net:Goal|Diving mask:WavesLadder|Parachute:Umbrella|Kite:Wind|Trophy:Trophy
+Wrench:Wrench|Toolbox:BriefcaseBusiness|Magnet:Magnet|Straight ruler:Ruler|Triangular ruler:Ruler|Plunger:Paintbrush|Clamp:Grip|Construction:Construction|Fire extinguisher:FireExtinguisher|Safety pin:Pin|Locked:Lock|Unlocked:LockOpen|Wood:Logs|Oil drum:Cylinder
+Violin:Music|Trumpet:Music2|Drum:Drum|Flute:Music2|Artist palette:Palette|Performing arts:Theater|Film frames:Film|Musical note:Music2|Musical notes:Music|Maracas:Music2|Long drum:Drum|Crystal ball:Orbit
+Notebook:Notebook|Ledger:BookOpen|Memo:StickyNote|Paperclip:Paperclip|Pen:Pen|Crayon:Pencil|Pushpin:Pin|File folder:Folder|Open book:BookOpen|Closed book:Book|Page facing up:FileText|Receipt:Receipt|Chart increasing:ChartNoAxesCombined|Envelope:Mail|Card index dividers:Folders|Clipboard:Clipboard|Bookmark:Bookmark|Name badge:ContactRound
+T-shirt:Shirt|Jeans:Shirt|Coat:Shirt|Dress:Shirt|Gloves:Hand|Scarf:Ribbon|Necktie:Shirt|Socks:Footprints|Handbag:ShoppingBag|Purse:Wallet|Crown:Crown|Ring:Circle|Gem stone:Gem|Sunglasses:Glasses
+Tent:Tent|Compass:Compass|Mount fuji:Mountain|Evergreen tree:TreePine|Deciduous tree:TreeDeciduous|Seedling:Sprout|Herb:Leaf|Cactus:Flower2|Beach with umbrella:Umbrella|World map:Map|Palm tree:TreePalm
+`.trim();
+
+const mappings = Object.fromEntries(pairs.split(/\s*\n\s*|\|/).filter(Boolean).map(pair => {
+  const separator = pair.indexOf(':');
+  return [pair.slice(0, separator), pair.slice(separator + 1)];
+}));
+const oldSource = await readFile(new URL('../src/domain/iconCatalog.ts', import.meta.url), 'utf8');
+const original = oldSource.match(/const threeDNames = '([^']+)'/)?.[1].split('|') ?? [];
+const extra = Object.values(JSON.parse(await readFile(new URL('../src/domain/extra3DIcons.json', import.meta.url), 'utf8'))).flatMap(entries => entries.map(([name]) => name));
+const expected = [...original, ...extra];
+const missing = expected.filter(name => !mappings[name]);
+const unknown = Object.entries(mappings).filter(([, icon]) => !lucide[icon]);
+if (missing.length || unknown.length) throw new Error(JSON.stringify({ missing, unknown }, null, 2));
+await writeFile(new URL('../src/domain/convertedLineArt.json', import.meta.url), `${JSON.stringify(mappings, null, 2)}\n`);
+console.log(`Mapped ${expected.length} legacy 3D choices to Lucide outlines.`);

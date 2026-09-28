@@ -7,11 +7,11 @@ import {
   Plane, Printer, Projector, Radio, Refrigerator, Router, Ruler, Sailboat, ScanLine, Scissors, PenTool,
   Scan, Server, Ship, ShowerHead, Shovel, Smartphone, SmartphoneCharging, Snowflake, Speaker, Tablet, TabletSmartphone,
   Target, TentTree, Timer, Toilet, TrainFront, Trophy, Truck, Tv, Usb, Video, Watch, Waves, Webcam, Wifi,
-  Wind, WashingMachine, Wrench, Gauge, CloudFog, Coffee, CupSoda, EthernetPort,
+  Wind, WashingMachine, Wrench, Gauge, CloudFog, Coffee, CupSoda, EthernetPort, Package,
 } from 'lucide-react';
 import { assetIconById, automaticAssetIconId } from '../domain/iconCatalog';
-import { assetEmoji } from './AppIcon';
 import { SpecialLineIcon, specialLineIconNames } from './SpecialLineIcon';
+import { outlineComponents } from './OutlineComponents';
 
 const lineIcons: Record<string, ComponentType<{ size?: number; strokeWidth?: number }>> = {
   laptop: Laptop, smartphone: Smartphone, tablet: Tablet, monitor: Monitor, keyboard: Keyboard, mouse: Mouse,
@@ -47,14 +47,17 @@ function TreadmillIcon({ size = 24, strokeWidth = 2 }: { size?: number; strokeWi
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="15" cy="4" r="2"/><path d="m13 8-2 4 4 2 2 4M13 8l4 3 2-2M11 12l-3 4M4 20h15l2-7M6 20l-2-2"/></svg>;
 }
 
+export function hasAssetIconDrawing(value: string): boolean {
+  return specialLineIconNames.has(value) || Boolean(lineIcons[value] || outlineComponents[value]);
+}
+
 export function AssetIcon({ id, name = '', categoryName, size = 52 }: { id?: string | null; name?: string; categoryName?: string | null; size?: number }) {
   const automaticId = id ? null : automaticAssetIconId(name, categoryName);
   const item = assetIconById.get(id ?? automaticId ?? '');
-  if (item?.kind === '3d') return <img className="chosen-asset-icon" src={`${import.meta.env.BASE_URL}asset-icons/fluent-3d/${item.value}.png`} alt="" width={size} height={size} loading="lazy" />;
-  if (item?.kind === 'line') {
-    const Icon = lineIcons[item.value];
-    if (Icon) return <Icon size={Math.round(size * .68)} strokeWidth={1.8} />;
+  if (item) {
     if (specialLineIconNames.has(item.value)) return <SpecialLineIcon name={item.value} size={Math.round(size * .68)} strokeWidth={1.8} />;
+    const Icon = lineIcons[item.value] ?? outlineComponents[item.value];
+    if (Icon) return <Icon size={Math.round(size * .68)} strokeWidth={1.8} />;
   }
-  return <span className="chosen-asset-emoji" aria-hidden="true" style={{ fontSize: size * .9 }}>{item?.kind === 'emoji' ? item.value : assetEmoji(name, categoryName)}</span>;
+  return <Package size={Math.round(size * .68)} strokeWidth={1.8} aria-hidden="true" />;
 }

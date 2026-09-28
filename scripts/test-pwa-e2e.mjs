@@ -103,31 +103,34 @@ try {
   await waitFor(online, 'Boolean(document.querySelector(".icon-picker-grid"))', '图标选择器');
   for (const width of [320, 390, 430]) {
     await online.send('Emulation.setDeviceMetricsOverride', { width, height: 844, deviceScaleFactor: 3, mobile: true });
-    await verifyIconGrid(online, `${width}px 立体`);
+    await verifyIconGrid(online, `${width}px 线性`);
   }
   await online.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 3, mobile: true });
   if (process.env.ICON_PICKER_SCREENSHOT) {
+    await online.evaluate('[...document.querySelectorAll(".icon-category-tabs button")].find(button => button.textContent?.trim() === "家具")?.click()');
+    await waitFor(online, 'document.querySelector(".icon-category-tabs button.active")?.textContent?.trim() === "家具"', '家具分类');
     const shot = await online.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
     await writeFile(process.env.ICON_PICKER_SCREENSHOT, Buffer.from(shot.data, 'base64'));
+    await online.evaluate('[...document.querySelectorAll(".icon-category-tabs button")].find(button => button.textContent?.trim() === "全部")?.click()');
   }
-  await online.evaluate('[...document.querySelectorAll(".icon-kind-tabs button")].find(button => button.textContent?.includes("Emoji"))?.click()');
-  await verifyIconGrid(online, 'Emoji');
-  await online.evaluate('[...document.querySelectorAll(".icon-kind-tabs button")].find(button => button.textContent?.includes("线性"))?.click()');
-  await verifyIconGrid(online, '线性');
-  await online.evaluate('[...document.querySelectorAll(".icon-kind-tabs button")].find(button => button.textContent?.includes("立体"))?.click()');
-  await online.evaluate('document.querySelector(".icon-picker-grid button[aria-label=Laptop]")?.click()');
-  await waitFor(online, 'Boolean(document.querySelector(".form-asset-icon img[src*=laptop]"))', '立体图标预览');
+  if (await online.evaluate('Boolean(document.querySelector(".icon-kind-tabs"))')) throw new Error('图标选择器仍显示旧样式切换');
+  if (!await online.evaluate('[...document.querySelectorAll(".icon-picker-grid button")].every(button => Boolean(button.querySelector("svg")))')) throw new Error('图标选择器存在非线性图标');
+  await online.evaluate('document.querySelector(".icon-picker input[type=search]")?.focus()');
+  await online.send('Input.insertText', { text: '电竞桌' });
+  await waitFor(online, 'Boolean(document.querySelector(".icon-picker-grid button[aria-label*=电竞桌]"))', '线性图标搜索');
+  await online.evaluate('document.querySelector(".icon-picker-grid button[aria-label*=电竞桌]")?.click()');
+  await waitFor(online, 'Boolean(document.querySelector(".form-asset-icon svg"))', '线性图标预览');
   await online.evaluate('[...document.querySelectorAll("label")].find(label => label.textContent?.includes("按次"))?.querySelector("input")?.click()');
   await online.evaluate('document.querySelector("form")?.requestSubmit()');
   await waitFor(online, 'location.hash.startsWith("#/assets/") && !location.hash.includes("new")', '在线资产保存');
   const originalAssetHash = await online.evaluate('location.hash');
   await online.evaluate('location.hash = "#/"');
-  await waitFor(online, 'Boolean(document.querySelector(".asset-visual img[src*=laptop]"))', '立体图标保存后显示在首页');
+  await waitFor(online, 'Boolean(document.querySelector(".asset-visual svg"))', '线性图标保存后显示在首页');
   await online.evaluate(`location.hash = ${JSON.stringify(originalAssetHash)}`);
   await waitFor(online, 'location.hash.includes("/assets/")', '返回好物详情');
   await online.evaluate('location.hash += "/edit"');
   await waitFor(online, 'document.body?.innerText?.includes("编辑好物")', '编辑页');
-  if (!await online.evaluate('Boolean(document.querySelector(".form-asset-icon img[src*=laptop]"))')) throw new Error('立体图标编辑时未保留');
+  if (!await online.evaluate('Boolean(document.querySelector(".form-asset-icon svg"))')) throw new Error('线性图标编辑时未保留');
   await typeInto(online, '名称', '更新后资产');
   const otherTab = await openSession(await getPage(`${baseUrl}${originalAssetHash}/edit`));
   await waitFor(otherTab, `Boolean(${labelInput('名称')})`, '另一标签编辑页');

@@ -16,17 +16,3 @@ const paths: Record<IconName, ReactNode> = {
 export function AppIcon({ name, size = 22 }: { name: IconName; size?: number }) {
   return <svg className="app-icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
-
-export function assetEmoji(name: string, categoryName?: string | null): string {
-  const value = `${name} ${categoryName ?? ''}`.toLowerCase();
-  if (/咖啡|coffee/.test(value)) return '☕';
-  if (/净水|水机|water/.test(value)) return '💧';
-  if (/车|交通|汽车|car/.test(value)) return '🚗';
-  if (/相机|摄影|镜头|camera/.test(value)) return '📷';
-  if (/跑步|运动|健身|bike/.test(value)) return '🏃';
-  if (/手机|phone/.test(value)) return '📱';
-  if (/电脑|mac|book|数码|laptop/.test(value)) return '💻';
-  if (/耳机|音响|speaker/.test(value)) return '🎧';
-  if (/家居|沙发|家具/.test(value)) return '🛋️';
-  return '📦';
-}

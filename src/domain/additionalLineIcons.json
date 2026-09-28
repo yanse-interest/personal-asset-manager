@@ -1,0 +1,77 @@
+{
+  "家具": [
+    ["rocking-chair", "摇椅", "RockingChair"], ["office-chair", "办公椅 电竞椅", "Armchair"],
+    ["stool", "凳子 吧台椅", "Armchair"], ["crib", "婴儿床", "Baby"],
+    ["mattress", "床垫", "BedDouble"], ["floor-lamp", "落地灯", "LampFloor"],
+    ["ceiling-lamp", "吊灯", "LampCeiling"], ["storage-box", "收纳箱", "Package"],
+    ["filing-cabinet", "文件柜", "Archive"], ["coat-rack", "衣帽架", "Shirt"],
+    ["wall-shelf", "壁挂架 层板", "PanelsTopLeft"], ["dresser", "梳妆台", "PanelTop"],
+    ["tv-stand", "电视柜", "Tv"], ["shoe-cabinet", "鞋柜", "Archive"],
+    ["folding-chair", "折叠椅", "Armchair"]
+  ],
+  "数码": [
+    ["docking-station", "扩展坞", "EthernetPort"], ["external-ssd", "移动硬盘 固态硬盘", "HardDrive"],
+    ["power-bank", "充电宝", "BatteryCharging"], ["charging-station", "充电站", "PlugZap"],
+    ["tablet-stand", "平板支架", "Tablet"], ["phone-stand", "手机支架", "Smartphone"],
+    ["monitor-arm", "显示器悬臂支架", "Monitor"], ["nas", "NAS 网络存储", "Server"],
+    ["gaming-pc", "游戏主机 台式电脑", "PcCase"], ["graphics-card", "显卡", "CircuitBoard"],
+    ["network-switch", "交换机", "Router"], ["smart-home-hub", "智能家居网关", "HousePlug"],
+    ["action-camera", "运动相机", "Camera"], ["drone", "无人机", "Plane"],
+    ["vr-headset", "VR 头显", "ScanEye"], ["smart-ring", "智能戒指", "Circle"],
+    ["stylus", "触控笔", "PenLine"], ["keyboard-case", "键盘保护壳", "Keyboard"]
+  ],
+  "家电": [
+    ["air-fryer", "空气炸锅", "CookingPot"], ["oven", "烤箱", "Microwave"],
+    ["induction-cooker", "电磁炉", "CookingPot"], ["dehumidifier", "除湿机", "Droplets"],
+    ["garment-steamer", "挂烫机", "Waves"], ["robot-mop", "拖地机器人", "CircleDot"],
+    ["dishwasher", "洗碗机", "WashingMachine"], ["clothes-dryer", "烘干机", "WashingMachine"],
+    ["blender", "搅拌机", "Blend"], ["juicer", "榨汁机", "CupSoda"],
+    ["toaster", "烤面包机", "Sandwich"], ["water-heater", "热水器", "Droplets"],
+    ["vacuum-cleaner", "吸尘器", "Wind"], ["electric-blanket", "电热毯", "Bed"],
+    ["air-circulator", "空气循环扇", "Fan"]
+  ],
+  "厨具": [
+    ["chef-knife", "厨师刀", "Utensils"], ["cutting-board", "砧板", "RectangleHorizontal"],
+    ["pressure-cooker", "高压锅", "CookingPot"], ["baking-tray", "烤盘", "RectangleHorizontal"],
+    ["kitchen-scale", "厨房秤", "Scale"], ["coffee-grinder", "磨豆机", "Coffee"],
+    ["thermos", "保温杯", "Coffee"], ["food-container", "保鲜盒", "Package"],
+    ["knife-block", "刀架", "UtensilsCrossed"], ["water-bottle", "水壶", "CupSoda"]
+  ],
+  "办公": [
+    ["paper-shredder", "碎纸机", "FileX"], ["label-printer", "标签打印机", "Printer"],
+    ["desk-organizer", "桌面收纳盒", "Archive"], ["whiteboard", "白板", "Presentation"],
+    ["projector-screen", "投影幕布", "Presentation"], ["desk-calendar", "台历", "CalendarDays"],
+    ["pen-holder", "笔筒", "PencilRuler"], ["laminator", "塑封机", "Printer"],
+    ["document-scanner", "文件扫描仪", "Scan"], ["document-safe", "文件保险箱", "Vault"]
+  ],
+  "运动": [
+    ["yoga-mat", "瑜伽垫", "RectangleHorizontal"], ["exercise-bike", "动感单车", "Bike"],
+    ["rowing-machine", "划船机", "Waves"], ["hiking-poles", "登山杖", "Mountain"],
+    ["bike-helmet", "骑行头盔", "HardHat"], ["resistance-band", "弹力带", "StretchHorizontal"],
+    ["swimming-goggles", "泳镜", "Glasses"], ["gym-bag", "运动包", "BaggageClaim"],
+    ["camping-chair", "露营椅", "Armchair"]
+  ],
+  "健康": [
+    ["blood-pressure-monitor", "血压计", "HeartPulse"], ["medicine-box", "药箱", "BriefcaseMedical"],
+    ["first-aid-kit", "急救包", "BriefcaseMedical"], ["electric-toothbrush", "电动牙刷", "Brush"],
+    ["massage-gun", "筋膜枪", "Activity"], ["wheelchair", "轮椅", "Accessibility"],
+    ["stethoscope", "听诊器", "Stethoscope"], ["hearing-aid", "助听器", "Ear"],
+    ["fitness-tracker", "运动手环", "Watch"], ["humidifier-filter", "加湿器滤芯", "Filter"]
+  ],
+  "宠物": [
+    ["pet-bed", "宠物窝", "PawPrint"], ["pet-carrier", "宠物航空箱", "Package"],
+    ["litter-box", "猫砂盆", "Cat"], ["scratching-post", "猫抓板", "Cat"],
+    ["pet-leash", "牵引绳", "Dog"], ["fish-tank", "鱼缸", "Fish"],
+    ["pet-bowl", "宠物食盆", "PawPrint"], ["bird-cage", "鸟笼", "Bird"]
+  ],
+  "服饰": [
+    ["glasses", "眼镜", "Glasses"], ["sports-watch", "运动手表", "Watch"],
+    ["jewelry-box", "首饰盒", "Gem"], ["umbrella-hat", "遮阳帽", "Umbrella"]
+  ],
+  "户外": [
+    ["garden-hose", "花园水管", "Waves"], ["watering-can", "浇水壶", "Sprout"],
+    ["pruning-shears", "园艺剪", "Scissors"], ["camping-lantern", "露营灯", "Lamp"],
+    ["portable-stove", "便携炉", "Flame"], ["cooler-box", "保温箱", "Package"],
+    ["picnic-basket", "野餐篮", "ShoppingBasket"], ["solar-panel", "太阳能板", "SunMedium"]
+  ]
+}
