@@ -20,7 +20,7 @@ export function App() {
     }).catch(() => { if (mounted) setDatabaseError('无法打开本地数据库，请检查浏览器存储权限后刷新重试。'); });
     return () => { mounted = false; unsubscribe(); };
   }, []);
-  const mainRoute = ['/', '/categories', '/stats', '/regular', '/settings'].includes(location.pathname);
+  const mainRoute = ['/', '/categories', '/stats', '/settings'].includes(location.pathname);
   return (
     <PwaProvider><main className="app-shell">
       <header className="app-header">

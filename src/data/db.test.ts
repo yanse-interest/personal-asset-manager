@@ -12,8 +12,8 @@ const asset: Asset = {
   categoryId: null, lifecycleStatus: 'active', endedDate: null, iconId: null,
 };
 
-describe('Dexie v5 schema', () => {
-  it('persists seven stores and their parent indexes across reopen', async () => {
+describe('Dexie v5 compatible schema', () => {
+  it('persists existing stores and their parent indexes across reopen', async () => {
     const name = `asset-test-${crypto.randomUUID()}`;
     const first = new AssetDatabase(name);
     try {
@@ -31,6 +31,33 @@ describe('Dexie v5 schema', () => {
         expect(await reopened.revenueRecords.where('assetId').equals(asset.id).count()).toBe(1);
       } finally { reopened.close(); }
     } finally { first.close(); await first.delete(); }
+  });
+
+  it('opens a database from the regular-items release and preserves its data', async () => {
+    const name = `rollback-${crypto.randomUUID()}`;
+    const previous = new Dexie(name);
+    previous.version(5).stores({
+      assets: 'id', categories: 'id, &name', costRecords: 'id, assetId', revenueRecords: 'id, assetId',
+      regularItems: 'id', regularVariants: 'id, itemId', regularPurchases: 'id, variantId',
+    });
+    const regularItem = { id: crypto.randomUUID(), name: '咖啡豆', createdAt: timestamp, updatedAt: timestamp };
+    const regularVariant = { id: crypto.randomUUID(), itemId: regularItem.id, name: '常买款', specification: '250 克', platform: '商城', createdAt: timestamp, updatedAt: timestamp };
+    const regularPurchase = { id: crypto.randomUUID(), variantId: regularVariant.id, date: '2026-09-28', quantity: 2, paidCents: 6000, note: null, createdAt: timestamp, updatedAt: timestamp };
+    await previous.open();
+    await previous.table('assets').add(asset);
+    await previous.table('regularItems').add(regularItem);
+    await previous.table('regularVariants').add(regularVariant);
+    await previous.table('regularPurchases').add(regularPurchase);
+    previous.close();
+
+    const restored = new AssetDatabase(name);
+    try {
+      await restored.open();
+      expect(await restored.assets.get(asset.id)).toEqual(asset);
+      expect(await restored.table('regularItems').get(regularItem.id)).toEqual(regularItem);
+      expect(await restored.table('regularVariants').get(regularVariant.id)).toEqual(regularVariant);
+      expect(await restored.table('regularPurchases').get(regularPurchase.id)).toEqual(regularPurchase);
+    } finally { restored.close(); previous.close(); await restored.delete(); }
   });
 
   it('atomically migrates a real v1 shape once without touching original fields or records', async () => {
@@ -110,7 +137,7 @@ describe('Dexie v5 schema', () => {
     const events: Array<{ issue: DatabaseIssue; open: boolean }> = [];
     const current = new AssetDatabase(name, issue => { events.push({ issue, open: current.isOpen() }); });
     const upgraded = new Dexie(name);
-    upgraded.version(6).stores({ assets: 'id', categories: 'id, &name', costRecords: 'id, assetId', revenueRecords: 'id, assetId', regularItems: 'id', regularVariants: 'id, itemId', regularPurchases: 'id, variantId' });
+    upgraded.version(6).stores({ assets: 'id', categories: 'id, &name', costRecords: 'id, assetId', revenueRecords: 'id, assetId' });
     const blocked: string[] = [];
     upgraded.on('blocked', () => { blocked.push('blocked'); });
     try {

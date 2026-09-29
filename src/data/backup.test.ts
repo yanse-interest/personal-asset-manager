@@ -26,7 +26,7 @@ let database: AssetDatabase;
 beforeEach(() => { database = new AssetDatabase(`backup-${crypto.randomUUID()}`); });
 afterEach(async () => { database.close(); await database.delete(); });
 
-describe('v1–v6 JSON backup', () => {
+describe('v1/v2/v3/v4/v5 JSON backup', () => {
   it('validates frozen v1 fields then upgrades in memory without changing history', async () => {
     const imported = parseBackupJson(JSON.stringify(sampleV1()), now);
     expect(imported.sourceSchemaVersion).toBe(1);
@@ -45,7 +45,7 @@ describe('v1–v6 JSON backup', () => {
     const { json, filename } = await exportBackup(database, now);
     expect(filename).toMatch(/^asset-cost-backup-\d{8}-\d{6}\.json$/);
     const parsed = parseBackupJson(json, now);
-    expect(parsed.sourceSchemaVersion).toBe(6);
+    expect(parsed.sourceSchemaVersion).toBe(5);
     expect(parsed.categories).toEqual([category]);
     await database.assets.clear(); await database.categories.clear();
     await replaceFromBackup(parsed, database, now);
@@ -68,7 +68,7 @@ describe('v1–v6 JSON backup', () => {
       await expect(replaceFromBackup(candidate, database, now), path).rejects.toThrow(path);
       expect(await getDashboardSnapshot(database)).toEqual(previous);
     }
-    await expect(replaceFromBackup({ ...sampleV2(), schemaVersion: 7 }, database, now)).rejects.toThrow('schemaVersion');
+    await expect(replaceFromBackup({ ...sampleV2(), schemaVersion: 6 }, database, now)).rejects.toThrow('schemaVersion');
     expect(await getDashboardSnapshot(database)).toEqual(previous);
   });
 
@@ -76,7 +76,7 @@ describe('v1–v6 JSON backup', () => {
     const withIcon = sampleV5(); withIcon.assets[0]!.iconId = '3d:laptop'; withIcon.assets[0]!.serviceStartDate = '2026-09-13';
     await replaceFromBackup(withIcon, database, now);
     const exported = parseBackupJson((await exportBackup(database, now)).json, now);
-    expect(exported.sourceSchemaVersion).toBe(6);
+    expect(exported.sourceSchemaVersion).toBe(5);
     expect(exported.assets[0]?.iconId).toBe('3d:laptop');
     await replaceFromBackup(sampleV2(), database, now);
     expect((await database.assets.get(assetId))?.iconId).toBeNull();

@@ -71,8 +71,8 @@ describe('dates', () => {
 describe('cost calculations', () => {
   it('uses the four fixed categories and raw ratios', () => {
     const result = calculateAssetCosts(asset, costs, revenues, '2026-09-13');
-    expect(result).toMatchObject({ purchaseCostCents: 100_000, additionalCostCents: 20_000, consumableCostCents: 30_000, totalCostCents: 150_000, revenueCents: 10_000, netCostCents: 140_000, bodyNetCostCents: 110_000, daysOwned: 1, costPerDay: { numeratorCents: 110_000, denominator: 1 }, costPerUse: { numeratorCents: 110_000, denominator: 4 } });
-    expect(formatRatio(result.costPerUse!.numeratorCents, result.costPerUse!.denominator)).toBe('¥275.00');
+    expect(result).toMatchObject({ purchaseCostCents: 100_000, additionalCostCents: 20_000, consumableCostCents: 30_000, totalCostCents: 150_000, revenueCents: 10_000, netCostCents: 140_000, daysOwned: 1, costPerDay: { numeratorCents: 140_000, denominator: 1 }, costPerUse: { numeratorCents: 140_000, denominator: 4 } });
+    expect(formatRatio(result.costPerUse!.numeratorCents, result.costPerUse!.denominator)).toBe('¥350.00');
     expect(calculateAssetCosts(asset, costs, revenues, '2026-09-14').costPerDay!.denominator).toBe(2);
     const delayed = calculateAssetCosts({ ...asset, purchaseDate: '2026-09-10', serviceStartDate: '2026-09-12' }, costs, revenues, '2026-09-14');
     expect(delayed).toMatchObject({ daysOwned: 5, serviceDays: 3, costPerDay: { denominator: 3 } });

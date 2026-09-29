@@ -1,9 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link, useSearchParams } from 'react-router';
-import { readAssetQuery, readAssetSort, readCategoryFilter, readStatusFilter, updateListSearchParam } from '../app/listSearchParams';
+import { readAssetSort, readCategoryFilter, readStatusFilter, updateListSearchParam } from '../app/listSearchParams';
 import { AssetCard } from '../components/AssetCard';
 import { getDashboardSnapshot } from '../data/queries';
-import { groupUpcomingExpiries, matchesAssetSearch } from '../domain/discovery';
 import { activeDailyCostCents, sortAssetSummaries, sortedCategories, statusNames, summarizeAssets } from '../domain/ledgers';
 import { formatCents } from '../domain/money';
 import { useToday } from '../hooks/useToday';
@@ -14,18 +13,8 @@ export function DashboardPage() {
   const requestedCategoryId = readCategoryFilter(searchParams);
   const status = readStatusFilter(searchParams, 'active');
   const sort = readAssetSort(searchParams);
-  const query = readAssetQuery(searchParams);
   const setFilter = (name: 'category' | 'status' | 'sort', value: string, defaultValue: string) => {
     setSearchParams(updateListSearchParam(searchParams, name, value, defaultValue), { replace: true, preventScrollReset: true });
-  };
-  const setQuery = (value: string) => {
-    const next = updateListSearchParam(searchParams, 'q', value, '');
-    if (value.trim() && !query.trim()) {
-      next.delete('category');
-      next.delete('sort');
-      next.set('status', 'all');
-    }
-    setSearchParams(next, { replace: true, preventScrollReset: true });
   };
   const result = useLiveQuery(async () => {
     try { return { snapshot: await getDashboardSnapshot(), error: null as string | null }; }
@@ -37,7 +26,6 @@ export function DashboardPage() {
   const { assets, categories } = result.snapshot;
   const categoryId = requestedCategoryId === 'all' || requestedCategoryId === 'uncategorized' || categories.some(category => category.id === requestedCategoryId) ? requestedCategoryId : 'all';
   const summaries = summarizeAssets(result.snapshot, today);
-  const expiries = groupUpcomingExpiries(summaries, today);
   const categoryFiltered = summaries.filter(item => categoryId === 'all' || (categoryId === 'uncategorized' ? item.asset.categoryId === null : item.asset.categoryId === categoryId));
   const pendingCount = categoryFiltered.filter(item => item.asset.lifecycleStatus === 'pending').length;
   const activeCount = categoryFiltered.filter(item => item.asset.lifecycleStatus === 'active').length;
@@ -51,8 +39,7 @@ export function DashboardPage() {
   const dailyCount = categoryFiltered.filter(item => item.asset.lifecycleStatus === 'active' && item.asset.costMode === 'day' && item.values.costPerDay !== null).length;
   const activeRatio = categoryFiltered.length ? Math.round(activeCount / categoryFiltered.length * 1000) / 10 : 0;
   const selected = categoryFiltered.filter(item => status === 'all' || item.asset.lifecycleStatus === status);
-  const searched = selected.filter(item => matchesAssetSearch(item, query));
-  const sortedSelected = sortAssetSummaries(searched, sort);
+  const sortedSelected = sortAssetSummaries(selected, sort);
   const statusCount = (value: typeof status) => value === 'all' ? categoryFiltered.length : categoryFiltered.filter(item => item.asset.lifecycleStatus === value).length;
   const statusLabel = status === 'all' ? '全部状态' : statusNames[status];
 
@@ -70,16 +57,13 @@ export function DashboardPage() {
       <div className="overview-count"><strong>{categoryFiltered.length}</strong><span>件</span></div>
       <p>其中 {activeCount} 件仍在好好使用</p>
       <div className="overview-facts"><div><small>最久陪伴</small><strong>{longestDays.toLocaleString('zh-CN')} 天</strong></div><div><small>平均持有</small><strong>{averageDays.toLocaleString('zh-CN')} 天</strong></div><div><small>累计购置</small><strong>{formatCents(purchaseTotal)}</strong></div></div>
-      <div className="daily-cost-summary"><div><small>按天好物本体合计日均</small><strong>{formatCents(dailyCost)} / 天</strong></div><small>当前类别中服役中的按天好物，共 {dailyCount} 件；不含耗材购买</small></div>
+      <div className="daily-cost-summary"><div><small>按天好物合计日均</small><strong>{formatCents(dailyCost)} / 天</strong></div><small>当前类别中服役中的按天好物，共 {dailyCount} 件；各件日均相加</small></div>
       <div className="active-progress"><div><span>仍在使用</span><strong>{activeRatio}%</strong></div><div className="progress-track"><i style={{ width: `${activeRatio}%` }}/></div></div>
       <div className="status-facts"><div><small>待服役</small><strong>{pendingCount} 件</strong></div><div><small>服役中</small><strong>{activeCount} 件</strong></div><div><small>已退役</small><strong>{retiredCount} 件</strong></div><div><small>已卖出</small><strong>{soldCount} 件</strong></div></div>
     </div>
 
-    <Link className="expiry-entry" to="/expiries"><span><strong>到期清单</strong><small>已过期 {expiries.overdue.length} · 今日 {expiries.today.length} · 未来 30 天 {expiries.soon.length}</small></span><span aria-hidden="true">›</span></Link>
-
     <div className="asset-section-heading"><h1>好物</h1><span>{sortedSelected.length} 件</span></div>
-    <div className="asset-search"><label htmlFor="asset-search-input">搜索好物</label><div><input id="asset-search-input" type="search" value={query} maxLength={100} onChange={event => setQuery(event.target.value)} placeholder="名称、类别或备注" />{query && <button type="button" onClick={() => setQuery('')}>清空</button>}</div></div>
     <div className="list-controls"><label>状态筛选<select aria-label="状态筛选" value={status} onChange={event => setFilter('status', event.target.value, 'active')}><option value="active">服役中（{statusCount('active')}）</option><option value="pending">待服役（{statusCount('pending')}）</option><option value="all">全部状态（{statusCount('all')}）</option><option value="retired">已退役（{statusCount('retired')}）</option><option value="sold">已卖出（{statusCount('sold')}）</option></select></label><label>成本排序<select aria-label="成本排序" value={sort} onChange={event => setFilter('sort', event.target.value, 'default')}><option value="default">默认排序</option><option value="day-desc">日均最高</option><option value="day-asc">日均最低</option><option value="use-desc">次均最高</option><option value="use-asc">次均最低</option></select></label></div>
-    {assets.length === 0 ? <div className="empty-state"><p>还没有记录好物。</p><div className="button-row"><Link className="button primary" to="/assets/new">记下第一件好物</Link><Link className="button" to="/settings">导入已有备份</Link></div></div> : selected.length === 0 && !query ? <div className="empty-state"><p>“{statusLabel}”下暂时没有好物。</p><button onClick={() => setFilter('status', 'all', 'active')}>查看全部状态</button></div> : searched.length === 0 && query ? <div className="empty-state"><p>没有找到与“{query}”匹配的好物。</p><button onClick={() => setQuery('')}>清空搜索</button></div> : sortedSelected.length === 0 ? <div className="empty-state"><p>当前范围内暂无{sort.startsWith('use-') ? '按次' : '按日'}好物。</p><button onClick={() => setFilter('sort', 'default', 'default')}>恢复默认排序</button></div> : <ul className="asset-list">{sortedSelected.map(item => <li key={item.asset.id}><AssetCard asset={item.asset} category={item.category} costs={item.costs} revenues={item.revenues} today={today} /></li>)}</ul>}
+    {assets.length === 0 ? <div className="empty-state"><p>还没有记录好物。</p><div className="button-row"><Link className="button primary" to="/assets/new">记下第一件好物</Link><Link className="button" to="/settings">导入已有备份</Link></div></div> : selected.length === 0 ? <div className="empty-state"><p>“{statusLabel}”下暂时没有好物。</p><button onClick={() => setFilter('status', 'all', 'active')}>查看全部状态</button></div> : sortedSelected.length === 0 ? <div className="empty-state"><p>当前范围内暂无{sort.startsWith('use-') ? '按次' : '按日'}好物。</p><button onClick={() => setFilter('sort', 'default', 'default')}>恢复默认排序</button></div> : <ul className="asset-list">{sortedSelected.map(item => <li key={item.asset.id}><AssetCard asset={item.asset} category={item.category} costs={item.costs} revenues={item.revenues} today={today} /></li>)}</ul>}
   </section>;
 }
