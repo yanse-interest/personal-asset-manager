@@ -83,21 +83,45 @@ try {
     async function setRegularField(formIndex, fieldIndex, value) {
       await app.evaluate(`(() => { const node = document.querySelectorAll('.regular-page form')[${formIndex}].querySelectorAll('input, select')[${fieldIndex}]; const setter = Object.getOwnPropertyDescriptor(node.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype, 'value').set; setter.call(node, ${JSON.stringify(value)}); node.dispatchEvent(new Event(node.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true })); })()`);
     }
+    await app.evaluate('document.querySelector(".regular-page form input")?.focus()');
     await setRegularField(0, 0, '咖啡豆');
-    await app.evaluate('document.querySelector(".regular-page form button.primary")?.click()');
-    await waitFor(app, 'document.querySelector(".regular-list a")?.textContent?.includes("咖啡豆")', '新增常买物品');
+    await app.evaluate('document.querySelector(".regular-page form input")?.blur()');
+    await waitFor(app, 'document.querySelector(".regular-list a")?.textContent?.includes("咖啡豆") && document.body.innerText.includes("已保存")', '名称离焦自动保存');
+    await app.evaluate('location.hash = "#/stats"');
+    await waitFor(app, 'document.body.innerText.includes("使用统计")', '离开常买物品');
+    await app.evaluate('location.hash = "#/regular"');
+    await waitFor(app, 'document.querySelector(".regular-list a")?.textContent?.includes("咖啡豆")', '重新进入仍有常买物品');
+    await setRegularField(0, 0, '纸巾');
+    await app.evaluate('document.querySelector(".bottom-nav a[href$=stats]")?.click()');
+    await waitFor(app, 'document.body.innerText.includes("使用统计")', '离开时保存名称');
+    await app.evaluate('location.hash = "#/regular"');
+    await waitFor(app, '[...document.querySelectorAll(".regular-list a")].some(row => row.textContent?.includes("纸巾"))', '离开后常买物品仍在');
+    await app.evaluate('[...document.querySelectorAll(".regular-card")].find(row => row.textContent?.includes("纸巾"))?.querySelector("button")?.click()');
+    await setRegularField(0, 0, '抽纸');
+    await app.evaluate('document.querySelector(".regular-page form input")?.focus(); document.querySelector(".regular-page form input")?.blur()');
+    await waitFor(app, '[...document.querySelectorAll(".regular-list a")].some(row => row.textContent?.includes("抽纸"))', '改名离焦自动保存');
+    await app.evaluate('[...document.querySelectorAll(".regular-card")].find(row => row.textContent?.includes("抽纸"))?.querySelector("button")?.click()');
+    await setRegularField(0, 0, '不应保存');
+    await app.evaluate('document.querySelector("[data-skip-item-autosave]")?.click()');
+    await waitFor(app, '[...document.querySelectorAll(".regular-list a")].some(row => row.textContent?.includes("抽纸")) && !document.body.innerText.includes("不应保存")', '取消改名不写库');
     await app.evaluate('document.querySelector(".regular-list a")?.click()');
     await waitFor(app, 'document.body.innerText.includes("添加常买款式")', '常买物品详情');
-    await setRegularField(0, 0, '深烘'); await setRegularField(0, 1, '250g/包'); await setRegularField(0, 2, '平台 A');
+    await setRegularField(0, 0, '深烘'); await setRegularField(0, 1, '1包（250g）'); await setRegularField(0, 2, '平台 A');
     await app.evaluate('document.querySelector(".regular-page form button.primary")?.click()');
     await waitFor(app, 'document.body.innerText.includes("深烘") && document.body.innerText.includes("记一次购买")', '新增常买款式');
     const variantId = await app.evaluate('document.querySelectorAll(".regular-page form")[1].querySelector("select option:nth-child(2)")?.value');
-    await setRegularField(1, 0, variantId); await setRegularField(1, 2, '2'); await setRegularField(1, 3, '90');
+    await setRegularField(1, 0, variantId); await setRegularField(1, 3, '2'); await setRegularField(1, 4, '90');
     await app.evaluate('document.querySelectorAll(".regular-page form")[1].querySelector("button.primary")?.click()');
-    await waitFor(app, 'document.body.innerText.includes("最近单件实付") && document.body.innerText.includes("¥45.00")', '购买单件价格');
-    await setRegularField(1, 0, variantId); await setRegularField(1, 2, '1'); await setRegularField(1, 3, '42');
+    await waitFor(app, 'document.body.innerText.includes("最近每包实付") && document.body.innerText.includes("¥45.00")', '购买单包价格');
+    await setRegularField(1, 0, variantId); await setRegularField(1, 3, '1'); await setRegularField(1, 4, '42');
     await app.evaluate('document.querySelectorAll(".regular-page form")[1].querySelector("button.primary")?.click()');
-    await waitFor(app, 'document.body.innerText.includes("比上次每件便宜 ¥3.00")', '价格变化即时更新');
+    await waitFor(app, 'document.body.innerText.includes("比上次每包便宜 ¥3.00")', '价格变化即时更新');
+    await setRegularField(1, 0, variantId);
+    await app.evaluate('[...document.querySelectorAll(".regular-presets button")].find(button => button.textContent === "×12")?.click()');
+    await setRegularField(1, 4, '480');
+    await waitFor(app, 'document.body.innerText.includes("1包 × 12组 = 12包")', '十二包快捷输入');
+    await app.evaluate('document.querySelectorAll(".regular-page form")[1].querySelector("button.primary")?.click()');
+    await waitFor(app, 'document.body.innerText.includes("¥40.00") && document.body.innerText.includes("12 包")', '十二包单包价格');
     for (const width of [320, 375, 430]) {
       await app.send('Emulation.setDeviceMetricsOverride', { width, height: 800, deviceScaleFactor: 1, mobile: true });
       if (await app.evaluate('document.documentElement.scrollWidth > document.documentElement.clientWidth')) throw new Error(`${width}px 常买物品详情横向溢出`);
@@ -114,7 +138,7 @@ try {
     if (!downloaded) throw new Error('浏览器没有保存 JSON 文件');
     const backupPath = join(downloads, downloaded);
     const saved = JSON.parse(await readFile(backupPath, 'utf8'));
-    if (saved.schemaVersion !== 6 || saved.assets?.length !== 1 || saved.assets[0]?.serviceStartDate !== saved.assets[0]?.purchaseDate || saved.categories?.length !== 1 || saved.costRecords?.length !== 1 || saved.revenueRecords?.length !== 1 || saved.regularItems?.length !== 1 || saved.regularVariants?.length !== 1 || saved.regularPurchases?.length !== 2) throw new Error('下载文件缺少常买物品、资产记录或开始使用日期');
+    if (saved.schemaVersion !== 6 || saved.assets?.length !== 1 || saved.assets[0]?.serviceStartDate !== saved.assets[0]?.purchaseDate || saved.categories?.length !== 1 || saved.costRecords?.length !== 1 || saved.revenueRecords?.length !== 1 || saved.regularItems?.length !== 2 || saved.regularVariants?.length !== 1 || saved.regularPurchases?.length !== 3 || !saved.regularPurchases.some(row => row.quantity === 12 && row.paidCents === 48_000)) throw new Error('下载文件缺少多包购买、常买物品或资产记录');
     await fixture('mutate');
     async function chooseDownloadedFile() {
       const documentNode = await app.send('DOM.getDocument');
