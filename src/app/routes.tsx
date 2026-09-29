@@ -9,6 +9,7 @@ import { StatusLedgerPage } from '../pages/StatusLedgerPage';
 import { CategoryLedgerPage } from '../pages/CategoryLedgerPage';
 import { CategoriesPage } from '../pages/CategoriesPage';
 import { StatsPage } from '../pages/StatsPage';
+import { RegularItemsPage } from '../pages/RegularItemsPage';
 import { ExpiryPage } from '../pages/ExpiryPage';
 import { AppErrorPage } from './AppErrorPage';
 
@@ -25,6 +26,8 @@ export const router = createHashRouter([
       { index: true, element: <DashboardPage /> },
       { path: 'categories', element: <CategoriesPage /> },
       { path: 'stats', element: <StatsPage /> },
+      { path: 'regular', element: <RegularItemsPage /> },
+      { path: 'regular/:itemId', element: <RegularItemsPage /> },
       { path: 'expiries', element: <ExpiryPage /> },
       { path: 'ledgers/:status', element: <StatusLedgerPage /> },
       { path: 'categories/:categoryId', element: <CategoryLedgerPage /> },

@@ -5,6 +5,7 @@ const items = [
   { to: '/', label: '好物', icon: 'assets' as const, end: true },
   { to: '/categories', label: '分类', icon: 'categories' as const },
   { to: '/stats', label: '统计', icon: 'stats' as const },
+  { to: '/regular', label: '常买', icon: 'regular' as const },
   { to: '/settings', label: '设置', icon: 'settings' as const },
 ];
 

@@ -1,13 +1,15 @@
 import { localToday } from '../domain/dates';
-import type { Asset, AssetV2, AssetV3, AssetV4, BackupImport, BackupV1, BackupV2, BackupV3, BackupV4, BackupV5, Category, CostRecord, LegacyAssetV1, RevenueRecord } from '../domain/types';
+import type { Asset, AssetV2, AssetV3, AssetV4, BackupImport, BackupV1, BackupV2, BackupV3, BackupV4, BackupV5, BackupV6, Category, CostRecord, LegacyAssetV1, RevenueRecord } from '../domain/types';
 import { MAX_CATEGORIES, MAX_RECORDS, validateAsset, validateAssetV2, validateAssetV3, validateAssetV4, validateCategory, validateCostRecord, validateInstant, validateLegacyAssetV1, validateRevenueRecord } from '../domain/validation';
+import { MAX_REGULAR_ITEMS, MAX_REGULAR_PURCHASES, MAX_REGULAR_VARIANTS, validateRegularItem, validateRegularPurchase, validateRegularVariant } from '../domain/regularItems';
 import { db, type AssetDatabase } from './db';
 
 export const MAX_BACKUP_BYTES = 80 * 1024 * 1024;
 const FORMAT = 'large-asset-cost-backup';
 const V1_ROOT_FIELDS = ['format', 'schemaVersion', 'exportedAt', 'currency', 'assets', 'costRecords', 'revenueRecords'] as const;
 const V2_ROOT_FIELDS = [...V1_ROOT_FIELDS, 'categories'] as const;
-export type BackupCounts = { assets: number; categories: number; costRecords: number; revenueRecords: number };
+const V6_ROOT_FIELDS = [...V2_ROOT_FIELDS, 'regularItems', 'regularVariants', 'regularPurchases'] as const;
+export type BackupCounts = { assets: number; categories: number; costRecords: number; revenueRecords: number; regularItems: number; regularVariants: number; regularPurchases: number };
 
 function object(value: unknown, path: string): Record<string, unknown> {
   if (value === null || typeof value !== 'object' || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype) throw new Error(`${path}: 必须是普通对象`);
@@ -36,8 +38,8 @@ function safeAdd(sum: number, value: number, path: string): number {
   if (!Number.isSafeInteger(result)) throw new Error(`${path}: 金额合计超出安全整数范围`);
   return result;
 }
-function validateEnvelope(root: Record<string, unknown>, version: 1 | 2 | 3 | 4 | 5): string {
-  exactFields(root, version === 1 ? V1_ROOT_FIELDS : V2_ROOT_FIELDS, 'backup');
+function validateEnvelope(root: Record<string, unknown>, version: 1 | 2 | 3 | 4 | 5 | 6): string {
+  exactFields(root, version === 1 ? V1_ROOT_FIELDS : version === 6 ? V6_ROOT_FIELDS : V2_ROOT_FIELDS, 'backup');
   if (root.format !== FORMAT) throw new Error('backup.format: 未知备份格式');
   if (root.schemaVersion !== version) throw new Error('backup.schemaVersion: 不支持的备份版本');
   if (root.currency !== 'CNY') throw new Error('backup.currency: 仅支持 CNY');
@@ -151,6 +153,23 @@ export function validateBackupV5(value: unknown, now = new Date()): BackupV5 {
   return { format: FORMAT, schemaVersion: 5, exportedAt, currency: 'CNY', assets, categories, ...records };
 }
 
+export function validateBackupV6(value: unknown, now = new Date()): BackupV6 {
+  const root = object(value, 'backup');
+  const exportedAt = validateEnvelope(root, 6);
+  const legacy = validateBackupV5(Object.fromEntries(Object.entries(root).filter(([key]) => !['regularItems', 'regularVariants', 'regularPurchases'].includes(key)).map(([key, val]) => [key, key === 'schemaVersion' ? 5 : val])), now);
+  const rawItems = array(root.regularItems, 'backup.regularItems');
+  const rawVariants = array(root.regularVariants, 'backup.regularVariants');
+  const rawPurchases = array(root.regularPurchases, 'backup.regularPurchases');
+  if (rawItems.length > MAX_REGULAR_ITEMS || rawVariants.length > MAX_REGULAR_VARIANTS || rawPurchases.length > MAX_REGULAR_PURCHASES) throw new Error('backup: 常买物品记录超过数量上限');
+  const itemIds = new Set<string>();
+  const regularItems = rawItems.map((raw, index) => { const path = `backup.regularItems[${index}]`; const item = atPath(path, 'regularItem', () => validateRegularItem(raw)); uniqueId(item.id, itemIds, path); return item; });
+  const variantIds = new Set<string>();
+  const regularVariants = rawVariants.map((raw, index) => { const path = `backup.regularVariants[${index}]`; const variant = atPath(path, 'regularVariant', () => validateRegularVariant(raw)); uniqueId(variant.id, variantIds, path); if (!itemIds.has(variant.itemId)) throw new Error(`${path}.itemId: 引用的物品不存在`); return variant; });
+  const purchaseIds = new Set<string>();
+  const regularPurchases = rawPurchases.map((raw, index) => { const path = `backup.regularPurchases[${index}]`; const purchase = atPath(path, 'regularPurchase', () => validateRegularPurchase(raw, localToday(now))); uniqueId(purchase.id, purchaseIds, path); if (!variantIds.has(purchase.variantId)) throw new Error(`${path}.variantId: 引用的款式不存在`); return purchase; });
+  return { ...legacy, schemaVersion: 6, exportedAt, regularItems, regularVariants, regularPurchases };
+}
+
 function upgradeV1(backup: BackupV1): BackupV2 {
   return { ...backup, schemaVersion: 2, categories: [], assets: backup.assets.map(asset => ({ ...asset, categoryId: null, lifecycleStatus: 'active', endedDate: null })) };
 }
@@ -163,14 +182,18 @@ function upgradeV3(backup: BackupV3): BackupV4 {
 function upgradeV4(backup: BackupV4): BackupV5 {
   return { ...backup, schemaVersion: 5, assets: backup.assets.map(asset => ({ ...asset })) };
 }
+function upgradeV5(backup: BackupV5): BackupV6 {
+  return { ...backup, schemaVersion: 6, regularItems: [], regularVariants: [], regularPurchases: [] };
+}
 export function validateBackupImport(value: unknown, now = new Date()): BackupImport {
   const root = object(value, 'backup');
   const sourceSchemaVersion = root.schemaVersion;
-  const data = sourceSchemaVersion === 1 ? validateBackupV5(upgradeV4(validateBackupV4(upgradeV3(validateBackupV3(upgradeV2(validateBackupV2(upgradeV1(validateBackupV1(value, now)), now)), now)), now)), now)
-    : sourceSchemaVersion === 2 ? validateBackupV5(upgradeV4(validateBackupV4(upgradeV3(validateBackupV3(upgradeV2(validateBackupV2(value, now)), now)), now)), now)
-      : sourceSchemaVersion === 3 ? validateBackupV5(upgradeV4(validateBackupV4(upgradeV3(validateBackupV3(value, now)), now)), now)
-        : sourceSchemaVersion === 4 ? validateBackupV5(upgradeV4(validateBackupV4(value, now)), now)
-          : sourceSchemaVersion === 5 ? validateBackupV5(value, now) : null;
+  const data = sourceSchemaVersion === 1 ? upgradeV5(validateBackupV5(upgradeV4(validateBackupV4(upgradeV3(validateBackupV3(upgradeV2(validateBackupV2(upgradeV1(validateBackupV1(value, now)), now)), now)), now)), now))
+    : sourceSchemaVersion === 2 ? upgradeV5(validateBackupV5(upgradeV4(validateBackupV4(upgradeV3(validateBackupV3(upgradeV2(validateBackupV2(value, now)), now)), now)), now))
+      : sourceSchemaVersion === 3 ? upgradeV5(validateBackupV5(upgradeV4(validateBackupV4(upgradeV3(validateBackupV3(value, now)), now)), now))
+        : sourceSchemaVersion === 4 ? upgradeV5(validateBackupV5(upgradeV4(validateBackupV4(value, now)), now))
+          : sourceSchemaVersion === 5 ? upgradeV5(validateBackupV5(value, now))
+            : sourceSchemaVersion === 6 ? validateBackupV6(value, now) : null;
   if (data) {
     Object.defineProperty(data, 'sourceSchemaVersion', { value: sourceSchemaVersion, enumerable: false });
     return data as BackupImport;
@@ -188,16 +211,16 @@ export async function readBackupFile(file: File, now = new Date()): Promise<Back
   return parseBackupJson(json, now);
 }
 export async function getBackupCounts(database: AssetDatabase = db): Promise<BackupCounts> {
-  return database.transaction('r', database.assets, database.categories, database.costRecords, database.revenueRecords, async () => ({
-    assets: await database.assets.count(), categories: await database.categories.count(), costRecords: await database.costRecords.count(), revenueRecords: await database.revenueRecords.count(),
+  return database.transaction('r', [database.assets, database.categories, database.costRecords, database.revenueRecords, database.regularItems, database.regularVariants, database.regularPurchases], async () => ({
+    assets: await database.assets.count(), categories: await database.categories.count(), costRecords: await database.costRecords.count(), revenueRecords: await database.revenueRecords.count(), regularItems: await database.regularItems.count(), regularVariants: await database.regularVariants.count(), regularPurchases: await database.regularPurchases.count(),
   }));
 }
 export async function exportBackup(database: AssetDatabase = db, now = new Date()): Promise<{ json: string; filename: string }> {
-  const snapshot = await database.transaction('r', database.assets, database.categories, database.costRecords, database.revenueRecords, async () => ({
-    assets: await database.assets.toArray(), categories: await database.categories.toArray(), costRecords: await database.costRecords.toArray(), revenueRecords: await database.revenueRecords.toArray(),
+  const snapshot = await database.transaction('r', [database.assets, database.categories, database.costRecords, database.revenueRecords, database.regularItems, database.regularVariants, database.regularPurchases], async () => ({
+    assets: await database.assets.toArray(), categories: await database.categories.toArray(), costRecords: await database.costRecords.toArray(), revenueRecords: await database.revenueRecords.toArray(), regularItems: await database.regularItems.toArray(), regularVariants: await database.regularVariants.toArray(), regularPurchases: await database.regularPurchases.toArray(),
   }));
   const byId = <T extends { id: string }>(items: T[]) => items.sort((a, b) => a.id.localeCompare(b.id));
-  const backup: BackupV5 = { format: FORMAT, schemaVersion: 5, exportedAt: now.toISOString(), currency: 'CNY', assets: byId(snapshot.assets), categories: byId(snapshot.categories), costRecords: byId(snapshot.costRecords), revenueRecords: byId(snapshot.revenueRecords) };
+  const backup: BackupV6 = { format: FORMAT, schemaVersion: 6, exportedAt: now.toISOString(), currency: 'CNY', assets: byId(snapshot.assets), categories: byId(snapshot.categories), costRecords: byId(snapshot.costRecords), revenueRecords: byId(snapshot.revenueRecords), regularItems: byId(snapshot.regularItems), regularVariants: byId(snapshot.regularVariants), regularPurchases: byId(snapshot.regularPurchases) };
   const json = JSON.stringify(backup); if (new TextEncoder().encode(json).byteLength > MAX_BACKUP_BYTES) throw new Error('backup: 导出文件超过 80 MiB');
   const datePart = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('');
   const timePart = [now.getHours(), now.getMinutes(), now.getSeconds()].map(value => String(value).padStart(2, '0')).join('');
@@ -205,8 +228,8 @@ export async function exportBackup(database: AssetDatabase = db, now = new Date(
 }
 export async function replaceFromBackup(candidate: unknown, database: AssetDatabase = db, now = new Date()): Promise<void> {
   const backup = validateBackupImport(candidate, now);
-  await database.transaction('rw', database.assets, database.categories, database.costRecords, database.revenueRecords, async () => {
-    await database.assets.clear(); await database.categories.clear(); await database.costRecords.clear(); await database.revenueRecords.clear();
-    await database.categories.bulkAdd(backup.categories); await database.assets.bulkAdd(backup.assets); await database.costRecords.bulkAdd(backup.costRecords); await database.revenueRecords.bulkAdd(backup.revenueRecords);
+  await database.transaction('rw', [database.assets, database.categories, database.costRecords, database.revenueRecords, database.regularItems, database.regularVariants, database.regularPurchases], async () => {
+    await database.assets.clear(); await database.categories.clear(); await database.costRecords.clear(); await database.revenueRecords.clear(); await database.regularItems.clear(); await database.regularVariants.clear(); await database.regularPurchases.clear();
+    await database.categories.bulkAdd(backup.categories); await database.assets.bulkAdd(backup.assets); await database.costRecords.bulkAdd(backup.costRecords); await database.revenueRecords.bulkAdd(backup.revenueRecords); await database.regularItems.bulkAdd(backup.regularItems); await database.regularVariants.bulkAdd(backup.regularVariants); await database.regularPurchases.bulkAdd(backup.regularPurchases);
   });
 }

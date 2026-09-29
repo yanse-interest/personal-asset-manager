@@ -1,5 +1,5 @@
 import { Dexie, type EntityTable } from 'dexie';
-import type { Asset, Category, CostRecord, LegacyAssetV1, RevenueRecord } from '../domain/types';
+import type { Asset, Category, CostRecord, LegacyAssetV1, RegularItem, RegularPurchase, RegularVariant, RevenueRecord } from '../domain/types';
 
 export type DatabaseIssue = 'blocked' | 'versionchange';
 
@@ -8,6 +8,9 @@ export class AssetDatabase extends Dexie {
   costRecords!: EntityTable<CostRecord, 'id'>;
   revenueRecords!: EntityTable<RevenueRecord, 'id'>;
   categories!: EntityTable<Category, 'id'>;
+  regularItems!: EntityTable<RegularItem, 'id'>;
+  regularVariants!: EntityTable<RegularVariant, 'id'>;
+  regularPurchases!: EntityTable<RegularPurchase, 'id'>;
 
   constructor(name = 'large-asset-cost', onIssue?: (issue: DatabaseIssue) => void) {
     super(name);
@@ -41,6 +44,10 @@ export class AssetDatabase extends Dexie {
       revenueRecords: 'id, assetId',
     }).upgrade(async transaction => {
       await transaction.table<Asset, string>('assets').toCollection().modify(asset => { asset.serviceStartDate = asset.purchaseDate; });
+    });
+    this.version(5).stores({
+      assets: 'id', categories: 'id, &name', costRecords: 'id, assetId', revenueRecords: 'id, assetId',
+      regularItems: 'id', regularVariants: 'id, itemId', regularPurchases: 'id, variantId',
     });
     this.on('blocked', () => onIssue?.('blocked'));
     this.on('versionchange', () => {

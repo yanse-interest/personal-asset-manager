@@ -12,14 +12,14 @@ const asset: Asset = {
   categoryId: null, lifecycleStatus: 'active', endedDate: null, iconId: null,
 };
 
-describe('Dexie v4 schema', () => {
-  it('persists four stores and their parent indexes across reopen', async () => {
+describe('Dexie v5 schema', () => {
+  it('persists seven stores and their parent indexes across reopen', async () => {
     const name = `asset-test-${crypto.randomUUID()}`;
     const first = new AssetDatabase(name);
     try {
       await first.open();
-      expect(first.verno).toBe(4);
-      expect(first.tables.map(table => table.name).sort()).toEqual(['assets', 'categories', 'costRecords', 'revenueRecords']);
+      expect(first.verno).toBe(5);
+      expect(first.tables.map(table => table.name).sort()).toEqual(['assets', 'categories', 'costRecords', 'regularItems', 'regularPurchases', 'regularVariants', 'revenueRecords']);
       await first.assets.add(asset);
       await first.costRecords.add({ id: '123e4567-e89b-42d3-a456-426614174001', assetId: asset.id, kind: 'additional', amountCents: 100, date: '2026-09-13', note: null, createdAt: timestamp, updatedAt: timestamp });
       await first.revenueRecords.add({ id: '123e4567-e89b-42d3-a456-426614174002', assetId: asset.id, amountCents: 50, date: '2026-09-13', note: null, createdAt: timestamp, updatedAt: timestamp });
@@ -97,7 +97,7 @@ describe('Dexie v4 schema', () => {
       await upgraded.open();
       expect(events).toEqual(['old-versionchange', 'blocked']);
       expect(upgraded.isOpen()).toBe(true);
-      expect(upgraded.verno).toBe(4);
+      expect(upgraded.verno).toBe(5);
       expect(await upgraded.assets.toArray()).toEqual([{ ...oldAsset, iconId: null, serviceStartDate: oldAsset.purchaseDate }]);
       expect(await upgraded.costRecords.toArray()).toEqual([oldCost]);
     } finally {
@@ -110,7 +110,7 @@ describe('Dexie v4 schema', () => {
     const events: Array<{ issue: DatabaseIssue; open: boolean }> = [];
     const current = new AssetDatabase(name, issue => { events.push({ issue, open: current.isOpen() }); });
     const upgraded = new Dexie(name);
-    upgraded.version(5).stores({ assets: 'id', categories: 'id, &name', costRecords: 'id, assetId', revenueRecords: 'id, assetId' });
+    upgraded.version(6).stores({ assets: 'id', categories: 'id, &name', costRecords: 'id, assetId', revenueRecords: 'id, assetId', regularItems: 'id', regularVariants: 'id, itemId', regularPurchases: 'id, variantId' });
     const blocked: string[] = [];
     upgraded.on('blocked', () => { blocked.push('blocked'); });
     try {

@@ -78,6 +78,31 @@ try {
   const app = await openSession(await newPage(`http://127.0.0.1:${webPort}/#/settings`));
   try {
     await app.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: downloads });
+    await app.evaluate('location.hash = "#/regular"');
+    await waitFor(app, 'document.body.innerText.includes("添加常买物品")', '常买物品入口');
+    async function setRegularField(formIndex, fieldIndex, value) {
+      await app.evaluate(`(() => { const node = document.querySelectorAll('.regular-page form')[${formIndex}].querySelectorAll('input, select')[${fieldIndex}]; const setter = Object.getOwnPropertyDescriptor(node.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype, 'value').set; setter.call(node, ${JSON.stringify(value)}); node.dispatchEvent(new Event(node.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true })); })()`);
+    }
+    await setRegularField(0, 0, '咖啡豆');
+    await app.evaluate('document.querySelector(".regular-page form button.primary")?.click()');
+    await waitFor(app, 'document.querySelector(".regular-list a")?.textContent?.includes("咖啡豆")', '新增常买物品');
+    await app.evaluate('document.querySelector(".regular-list a")?.click()');
+    await waitFor(app, 'document.body.innerText.includes("添加常买款式")', '常买物品详情');
+    await setRegularField(0, 0, '深烘'); await setRegularField(0, 1, '250g/包'); await setRegularField(0, 2, '平台 A');
+    await app.evaluate('document.querySelector(".regular-page form button.primary")?.click()');
+    await waitFor(app, 'document.body.innerText.includes("深烘") && document.body.innerText.includes("记一次购买")', '新增常买款式');
+    const variantId = await app.evaluate('document.querySelectorAll(".regular-page form")[1].querySelector("select option:nth-child(2)")?.value');
+    await setRegularField(1, 0, variantId); await setRegularField(1, 2, '2'); await setRegularField(1, 3, '90');
+    await app.evaluate('document.querySelectorAll(".regular-page form")[1].querySelector("button.primary")?.click()');
+    await waitFor(app, 'document.body.innerText.includes("最近单件实付") && document.body.innerText.includes("¥45.00")', '购买单件价格');
+    await setRegularField(1, 0, variantId); await setRegularField(1, 2, '1'); await setRegularField(1, 3, '42');
+    await app.evaluate('document.querySelectorAll(".regular-page form")[1].querySelector("button.primary")?.click()');
+    await waitFor(app, 'document.body.innerText.includes("比上次每件便宜 ¥3.00")', '价格变化即时更新');
+    for (const width of [320, 375, 430]) {
+      await app.send('Emulation.setDeviceMetricsOverride', { width, height: 800, deviceScaleFactor: 1, mobile: true });
+      if (await app.evaluate('document.documentElement.scrollWidth > document.documentElement.clientWidth')) throw new Error(`${width}px 常买物品详情横向溢出`);
+    }
+    await app.evaluate('location.hash = "#/settings"');
     await waitFor(app, 'document.body.innerText.includes("导出全部数据")', '设置页');
     await app.evaluate('[...document.querySelectorAll("button")].find(button => button.textContent === "导出全部数据")?.click()');
     let downloaded;
@@ -89,7 +114,7 @@ try {
     if (!downloaded) throw new Error('浏览器没有保存 JSON 文件');
     const backupPath = join(downloads, downloaded);
     const saved = JSON.parse(await readFile(backupPath, 'utf8'));
-    if (saved.schemaVersion !== 5 || saved.assets?.length !== 1 || saved.assets[0]?.serviceStartDate !== saved.assets[0]?.purchaseDate || saved.categories?.length !== 1 || saved.costRecords?.length !== 1 || saved.revenueRecords?.length !== 1) throw new Error('下载文件缺少四表记录或开始使用日期');
+    if (saved.schemaVersion !== 6 || saved.assets?.length !== 1 || saved.assets[0]?.serviceStartDate !== saved.assets[0]?.purchaseDate || saved.categories?.length !== 1 || saved.costRecords?.length !== 1 || saved.revenueRecords?.length !== 1 || saved.regularItems?.length !== 1 || saved.regularVariants?.length !== 1 || saved.regularPurchases?.length !== 2) throw new Error('下载文件缺少常买物品、资产记录或开始使用日期');
     await fixture('mutate');
     async function chooseDownloadedFile() {
       const documentNode = await app.send('DOM.getDocument');
@@ -236,6 +261,8 @@ try {
     await waitFor(app, 'document.body.innerText.includes("旧版咖啡机")', 'v1 资产映射至服役中');
     await app.evaluate('location.hash = "#/categories/uncategorized"');
     await waitFor(app, 'document.body.innerText.includes("旧版咖啡机")', 'v1 资产映射至未分类');
+    await app.evaluate('location.hash = "#/regular"');
+    await waitFor(app, 'document.body.innerText.includes("还没有常买物品")', '旧备份覆盖后常买数据清空');
     console.log('PASS: Chrome JSON 恢复、搜索、到期清单、类别与状态操作及移动宽度');
   } finally { app.close(); }
 } finally {
