@@ -6,6 +6,8 @@ describe('list navigation context', () => {
     expect(listNavigationState('/', '?category=kitchen&status=retired')).toEqual({ listPath: '/?category=kitchen&status=retired' });
     expect(listNavigationState('/categories/abc', '?status=active')).toEqual({ listPath: '/categories/abc?status=active' });
     expect(listNavigationState('/ledgers/sold', '?category=kitchen')).toEqual({ listPath: '/ledgers/sold?category=kitchen' });
+    expect(listNavigationState('/expiries', '')).toEqual({ listPath: '/expiries' });
+    expect(listNavigationState('/', '?q=%E8%80%B3%E6%9C%BA')).toEqual({ listPath: '/?q=%E8%80%B3%E6%9C%BA' });
   });
 
   it('falls back to the dashboard for missing or unsafe state', () => {

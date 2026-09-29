@@ -107,6 +107,30 @@ try {
     await app.evaluate('[...document.querySelectorAll("button")].find(button => button.textContent === "确认替换")?.click()');
     await waitFor(app, 'location.hash === "#/"', '导入完成并返回首页');
     await fixture('verify');
+    await waitFor(app, 'Boolean(document.querySelector("#asset-search-input"))', '首页搜索框');
+    await app.evaluate('(() => { const input = document.querySelector("#asset-search-input"); const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set; setter.call(input, "数码 备注"); input.dispatchEvent(new Event("input", { bubbles: true })); })()');
+    await waitFor(app, 'location.hash.includes("q=") && location.hash.includes("status=all") && document.querySelector(".asset-card-link")?.textContent?.includes("备份测试资产")', '名称类别备注搜索');
+    await app.evaluate('(() => { const input = document.querySelector("#asset-search-input"); const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set; setter.call(input, "不存在"); input.dispatchEvent(new Event("input", { bubbles: true })); })()');
+    await waitFor(app, 'document.body.innerText.includes("没有找到与“不存在”匹配")', '搜索无结果反馈');
+    await app.evaluate('[...document.querySelectorAll("button")].find(button => button.textContent === "清空搜索")?.click()');
+    await waitFor(app, '!location.hash.includes("q=") && Boolean(document.querySelector(".asset-card-link"))', '清空搜索');
+    await app.evaluate('location.hash = "#/assets/11111111-1111-4111-8111-111111111111/edit"');
+    await waitFor(app, 'document.body.innerText.includes("编辑好物")', '设置到期日期');
+    await app.evaluate('(() => { const date = new Date(); date.setDate(date.getDate() + 7); const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; const input = [...document.querySelectorAll("input[type=date]")].find(item => item.closest("label")?.textContent?.startsWith("到期日期")); const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set; setter.call(input, value); input.dispatchEvent(new Event("input", { bubbles: true })); input.dispatchEvent(new Event("change", { bubbles: true })); })()');
+    await app.evaluate('document.querySelector("form")?.requestSubmit()');
+    await waitFor(app, 'location.hash.includes("/assets/11111111-1111-4111-8111-111111111111") && document.body.innerText.includes("距到期 7 天")', '到期日期保存');
+    await app.evaluate('location.hash = "#/"');
+    await waitFor(app, 'document.querySelector(".expiry-entry")?.textContent?.includes("未来 30 天 1")', '首页到期入口');
+    await app.evaluate('document.querySelector(".expiry-entry")?.click()');
+    await waitFor(app, 'location.hash === "#/expiries" && document.querySelector(".expiry-group")?.textContent?.includes("备份测试资产")', '到期清单');
+    for (const width of [320, 375, 390, 430]) {
+      await app.send('Emulation.setDeviceMetricsOverride', { width, height: 800, deviceScaleFactor: 1, mobile: true });
+      if (await app.evaluate('document.documentElement.scrollWidth > document.documentElement.clientWidth')) throw new Error(`${width}px 到期清单横向溢出`);
+    }
+    await app.evaluate('document.querySelector(".expiry-list a")?.click()');
+    await waitFor(app, 'location.hash.includes("/assets/11111111-1111-4111-8111-111111111111")', '到期清单进入详情');
+    await app.evaluate('[...document.querySelectorAll("a")].find(link => link.textContent === "返回上一级")?.click()');
+    await waitFor(app, 'location.hash === "#/expiries"', '详情返回到期清单');
     await app.evaluate('location.hash = "#/"');
     await waitFor(app, 'document.body.innerText.includes("状态账本") && document.body.innerText.includes("类别账本")', 'V2 首页账本');
     await app.evaluate('[...document.querySelectorAll(".category-tabs button")].find(button => button.textContent?.includes("数码"))?.click()');
@@ -212,7 +236,7 @@ try {
     await waitFor(app, 'document.body.innerText.includes("旧版咖啡机")', 'v1 资产映射至服役中');
     await app.evaluate('location.hash = "#/categories/uncategorized"');
     await waitFor(app, 'document.body.innerText.includes("旧版咖啡机")', 'v1 资产映射至未分类');
-    console.log('PASS: Chrome v1/v2 JSON 恢复、类别 CRUD、状态编辑、账本筛选及移动宽度');
+    console.log('PASS: Chrome JSON 恢复、搜索、到期清单、类别与状态操作及移动宽度');
   } finally { app.close(); }
 } finally {
   browser?.kill('SIGTERM');

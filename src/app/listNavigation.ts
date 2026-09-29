@@ -2,7 +2,7 @@ export interface ListNavigationState {
   listPath: string;
 }
 
-const listPathPattern = /^(?:\/(?:\?.*)?|\/categories\/(?:[^/?#]+)(?:\?.*)?|\/ledgers\/(?:active|retired|sold)(?:\?.*)?)$/;
+const listPathPattern = /^(?:\/(?:\?.*)?|\/expiries(?:\?.*)?|\/categories\/(?:[^/?#]+)(?:\?.*)?|\/ledgers\/(?:pending|active|retired|sold)(?:\?.*)?)$/;
 
 export function readListPath(state: unknown): string {
   if (!state || typeof state !== 'object' || !('listPath' in state)) return '/';

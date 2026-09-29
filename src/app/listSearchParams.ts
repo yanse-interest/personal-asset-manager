@@ -20,9 +20,13 @@ export function readAssetSort(searchParams: URLSearchParams): AssetSort {
   return value && assetSorts.has(value as AssetSort) ? value as AssetSort : 'default';
 }
 
+export function readAssetQuery(searchParams: URLSearchParams): string {
+  return (searchParams.get('q') ?? '').slice(0, 100);
+}
+
 export function updateListSearchParam(
   searchParams: URLSearchParams,
-  name: 'category' | 'status' | 'sort',
+  name: 'category' | 'status' | 'sort' | 'q',
   value: string,
   defaultValue: string,
 ): URLSearchParams {
