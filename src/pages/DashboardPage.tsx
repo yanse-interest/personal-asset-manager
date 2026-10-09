@@ -36,7 +36,7 @@ export function DashboardPage() {
   const averageDays = served.length ? Math.round(served.reduce((sum, item) => sum + item.values.serviceDays, 0) / served.length) : 0;
   const purchaseTotal = categoryFiltered.reduce((sum, item) => sum + item.values.purchaseCostCents, 0);
   const dailyCost = activeDailyCostCents(categoryFiltered);
-  const dailyCount = categoryFiltered.filter(item => item.asset.lifecycleStatus === 'active' && item.asset.costMode === 'day' && item.values.costPerDay !== null).length;
+  const dailyCount = categoryFiltered.filter(item => item.asset.lifecycleStatus === 'active' && item.asset.costMode === 'day' && item.values.countsDailyCostToday && item.values.costPerDay !== null).length;
   const activeRatio = categoryFiltered.length ? Math.round(activeCount / categoryFiltered.length * 1000) / 10 : 0;
   const selected = categoryFiltered.filter(item => status === 'all' || item.asset.lifecycleStatus === status);
   const sortedSelected = sortAssetSummaries(selected, sort);
@@ -57,7 +57,7 @@ export function DashboardPage() {
       <div className="overview-count"><strong>{categoryFiltered.length}</strong><span>件</span></div>
       <p>其中 {activeCount} 件仍在好好使用</p>
       <div className="overview-facts"><div><small>最久陪伴</small><strong>{longestDays.toLocaleString('zh-CN')} 天</strong></div><div><small>平均持有</small><strong>{averageDays.toLocaleString('zh-CN')} 天</strong></div><div><small>累计购置</small><strong>{formatCents(purchaseTotal)}</strong></div></div>
-      <div className="daily-cost-summary"><div><small>按天好物合计日均</small><strong>{formatCents(dailyCost)} / 天</strong></div><small>当前类别中服役中的按天好物，共 {dailyCount} 件；各件日均相加</small></div>
+      <div className="daily-cost-summary"><div><small>今日使用成本</small><strong>{formatCents(dailyCost)} / 天</strong></div><small>当前类别中今天正在使用的按天好物，共 {dailyCount} 件；仅计入对应日期内的费用</small></div>
       <div className="active-progress"><div><span>仍在使用</span><strong>{activeRatio}%</strong></div><div className="progress-track"><i style={{ width: `${activeRatio}%` }}/></div></div>
       <div className="status-facts"><div><small>待服役</small><strong>{pendingCount} 件</strong></div><div><small>服役中</small><strong>{activeCount} 件</strong></div><div><small>已退役</small><strong>{retiredCount} 件</strong></div><div><small>已卖出</small><strong>{soldCount} 件</strong></div></div>
     </div>

@@ -11,6 +11,9 @@ export interface AssetCosts {
   netCostCents: number;
   daysOwned: number;
   serviceDays: number;
+  costDays: number;
+  costPeriodEnd: LocalDate | null;
+  countsDailyCostToday: boolean;
   costPerDay: CostRatio | null;
   costPerUse: CostRatio | null;
   clockBeforePurchase: boolean;
@@ -46,6 +49,12 @@ export function calculateAssetCosts(
   const serviceEnd = asset.lifecycleStatus === 'active' || asset.lifecycleStatus === 'pending' || asset.endedDate === null ? today : asset.endedDate;
   const owned = daysOwned(asset.purchaseDate, serviceEnd);
   const serviceDays = asset.serviceStartDate === null ? 0 : daysOwned(asset.serviceStartDate, serviceEnd);
+  const costPeriodEnd = asset.serviceStartDate === null ? null : asset.endedDate
+    ?? (asset.costMode === 'day' && asset.expiryDate !== null && asset.expiryDate >= asset.serviceStartDate ? asset.expiryDate : null);
+  const costDays = asset.serviceStartDate === null ? 0 : daysOwned(asset.serviceStartDate, costPeriodEnd ?? serviceEnd);
+  const countsDailyCostToday = asset.lifecycleStatus === 'active' && asset.costMode === 'day'
+    && asset.serviceStartDate !== null && today >= asset.serviceStartDate
+    && (costPeriodEnd === null || today <= costPeriodEnd);
   return {
     purchaseCostCents: asset.purchaseCostCents,
     additionalCostCents,
@@ -55,7 +64,10 @@ export function calculateAssetCosts(
     netCostCents,
     daysOwned: owned,
     serviceDays,
-    costPerDay: serviceDays > 0 ? { numeratorCents: netCostCents, denominator: serviceDays } : null,
+    costDays,
+    costPeriodEnd,
+    countsDailyCostToday,
+    costPerDay: costDays > 0 ? { numeratorCents: netCostCents, denominator: costDays } : null,
     costPerUse: asset.usageCount > 0 ? { numeratorCents: netCostCents, denominator: asset.usageCount } : null,
     clockBeforePurchase: today < asset.purchaseDate || (asset.serviceStartDate !== null && today < asset.serviceStartDate) || (asset.endedDate !== null && today < asset.endedDate),
   };

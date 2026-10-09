@@ -35,7 +35,7 @@ export function activeDailyCostCents(items: readonly AssetSummary[]): number {
   let numerator = 0n;
   let denominator = 1n;
   for (const item of items) {
-    if (item.asset.lifecycleStatus !== 'active' || item.asset.costMode !== 'day' || item.values.costPerDay === null) continue;
+    if (item.asset.lifecycleStatus !== 'active' || item.asset.costMode !== 'day' || !item.values.countsDailyCostToday || item.values.costPerDay === null) continue;
     const ratio = item.values.costPerDay;
     numerator = numerator * BigInt(ratio.denominator) + BigInt(ratio.numeratorCents) * denominator;
     denominator *= BigInt(ratio.denominator);
