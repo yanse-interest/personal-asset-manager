@@ -5,6 +5,7 @@ import { createAsset, getAsset, updateAsset } from '../data/assets';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { listCategories } from '../data/categories';
 import { localToday } from '../domain/dates';
+import { useToday } from '../hooks/useToday';
 import type { Asset, CostMode, LifecycleStatus } from '../domain/types';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { ErrorMessage } from '../components/ErrorMessage';
@@ -22,6 +23,7 @@ export function AssetFormPage() {
 
 function AssetForm() {
   const { assetId } = useParams(); const editing = Boolean(assetId); const navigate = useNavigate(); const location = useLocation();
+  const today = useToday();
   const navigationState = { listPath: readListPath(location.state) };
   const categoryResult = useLiveQuery(async () => {
     try { return { value: await listCategories(), error: null as string | null }; }
@@ -68,6 +70,7 @@ function AssetForm() {
     {draft.purchaseCost && Number(draft.purchaseCost) < 1000 && <small>建议主要记录约 ¥1000 以上的大件，此金额仍可保存。</small>}
     <label>购买日期<input type="date" value={draft.purchaseDate} max={localToday()} onChange={e => setPurchaseDate(e.target.value)} required /></label>
     <label>使用状态<select value={draft.lifecycleStatus} onChange={e => setStatus(e.target.value as LifecycleStatus)}><option value="pending">待服役</option><option value="active">服役中</option><option value="retired">已退役</option><option value="sold">已卖出</option></select></label>
+    {draft.lifecycleStatus === 'active' && draft.expiryDate && draft.serviceStartDate && draft.expiryDate >= draft.serviceStartDate && draft.expiryDate < today && <small>已过到期日，将自动按已退役处理，结束日期为 {draft.expiryDate}。延后或清空到期日期可继续服役。</small>}
     {draft.lifecycleStatus !== 'pending' ? <label>开始使用日期<input type="date" min={draft.purchaseDate} max={localToday()} value={draft.serviceStartDate} onChange={e => set('serviceStartDate', e.target.value)} required /><small>默认与购买日期一致，也可以改为实际开始使用的日期。</small></label> : <small>待服役期间不计算服役天数和日均；启用时再填写开始使用日期。</small>}
     <label>类别<select value={draft.categoryId} onChange={e => set('categoryId', e.target.value)}><option value="">未分类</option>{draft.categoryId && !categories.some(category => category.id === draft.categoryId) && <option value={draft.categoryId}>类别已删除，请重新选择</option>}{categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label><small><Link to="/settings">在设置页管理类别</Link></small>
     {(draft.lifecycleStatus === 'retired' || draft.lifecycleStatus === 'sold') && <div className="date-field"><label>结束日期{draft.lifecycleStatus === 'retired' ? '（可选）' : ''}<input type="date" min={draft.serviceStartDate || draft.purchaseDate} max={localToday()} value={draft.endedDate} onChange={e => set('endedDate', e.target.value)} required={draft.lifecycleStatus === 'sold'} /></label>{draft.endedDate && <button className="date-clear" type="button" onClick={() => set('endedDate', '')}>清空结束日期</button>}{draft.lifecycleStatus === 'retired' && <small>不填写时，按天指标会继续计算到今天。</small>}</div>}
@@ -77,7 +80,7 @@ function AssetForm() {
     <fieldset><legend>主要观察方式</legend><label className="inline"><input type="radio" checked={draft.costMode === 'day'} onChange={() => set('costMode', 'day')} />按天</label><label className="inline"><input type="radio" checked={draft.costMode === 'use'} onChange={() => set('costMode', 'use')} />按次</label></fieldset>
     {!editing && draft.costMode === 'use' && draft.lifecycleStatus !== 'pending' && <label>已有累计次数<input inputMode="numeric" value={draft.initialUsageCount} onChange={e => set('initialUsageCount', e.target.value)} /></label>}
     {editing && source && <small>已有使用次数 {source.usageCount} 次；普通编辑不会覆盖次数。</small>}
-    <div className="date-field"><label>到期日期（可选）<input type="date" min={draft.purchaseDate} value={draft.expiryDate} onChange={e => set('expiryDate', e.target.value)} /></label>{draft.expiryDate && <button className="date-clear" type="button" onClick={() => set('expiryDate', '')}>清空到期日期</button>}<small>{draft.costMode === 'day' ? '按天费用从开始使用日分摊至到期日，包含首尾两天；仅在这段日期内计入今日使用成本。到期日早于开始使用日时，仅作提醒。' : '按次好物的到期日期仅用于提醒，不影响次均成本。'}</small></div>
+    <div className="date-field"><label>到期日期（可选）<input type="date" min={draft.purchaseDate} value={draft.expiryDate} onChange={e => set('expiryDate', e.target.value)} /></label>{draft.expiryDate && <button className="date-clear" type="button" onClick={() => set('expiryDate', '')}>清空到期日期</button>}<small>服役中的好物过了到期日，自动按已退役处理，结束日期取到期日；到期当天仍算服役。{draft.costMode === 'day' ? '按天费用从开始使用日分摊至到期日，包含首尾两天。' : '到期后不能继续增加使用次数，可更正历史次数。'}到期日早于开始使用日时，仅作提醒；待服役好物仍保持待服役。</small></div>
     <label>备注（可选）<textarea value={draft.note} maxLength={2000} onChange={e => set('note', e.target.value)} /></label>
     {error && <ErrorMessage>{error}</ErrorMessage>}<div className="button-row"><Link className="button" to={editing && assetId ? `/assets/${assetId}` : '/'} state={editing ? navigationState : undefined}>取消</Link><button className="primary" disabled={busy}>{busy ? '保存中…' : '保存'}</button></div>
   </fieldset></form>{iconPickerOpen && <AssetIconPicker selectedId={draft.iconId} onSelect={id => { set('iconId', id); setIconPickerOpen(false); }} onClose={() => setIconPickerOpen(false)} />}{blocker.state === 'blocked' && <ConfirmDialog title={busy ? '正在保存' : '放弃未保存修改？'} confirmLabel={busy ? '等待保存' : '放弃并离开'} busy={busy} onCancel={() => blocker.reset()} onConfirm={() => { if (!busyRef.current) blocker.proceed(); }}><p>{busy ? '请等待保存完成后再离开。' : '离开后当前输入不会保留。'}</p></ConfirmDialog>}</section>;

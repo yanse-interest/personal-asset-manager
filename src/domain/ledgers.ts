@@ -1,4 +1,5 @@
 import { calculateAssetCosts, type AssetCosts } from './calculations';
+import { effectiveAsset } from './lifecycle';
 import type { Asset, Category, CostRecord, LifecycleStatus, RevenueRecord } from './types';
 
 export interface LedgerFacts { assets: Asset[]; categories: Category[]; costs: CostRecord[]; revenues: RevenueRecord[] }
@@ -17,6 +18,7 @@ export function summarizeAssets(facts: LedgerFacts, today: string): AssetSummary
   for (const record of facts.revenues) revenuesById.set(record.assetId, [...(revenuesById.get(record.assetId) ?? []), record]);
   const categoriesById = new Map(facts.categories.map(category => [category.id, category]));
   return facts.assets.map(asset => {
+    asset = effectiveAsset(asset, today);
     const costs = costsById.get(asset.id) ?? []; const revenues = revenuesById.get(asset.id) ?? [];
     return { asset, category: asset.categoryId ? categoriesById.get(asset.categoryId) ?? null : null, costs, revenues, values: calculateAssetCosts(asset, costs, revenues, today) };
   }).sort((a, b) => b.asset.purchaseDate.localeCompare(a.asset.purchaseDate) || a.asset.id.localeCompare(b.asset.id));

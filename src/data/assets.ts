@@ -1,4 +1,5 @@
 import { localToday } from '../domain/dates';
+import { effectiveAsset } from '../domain/lifecycle';
 import { parseYuan } from '../domain/money';
 import type { Asset, CostMode, CostRecord, LifecycleStatus, LocalDate, RevenueRecord } from '../domain/types';
 import { MAX_RECORDS, MAX_USAGE_COUNT, validateAsset, validateRevenueRecord } from '../domain/validation';
@@ -35,11 +36,11 @@ function parseUsageCount(text = '0'): number {
   return result;
 }
 
-function requireUsageAsset(current: Asset | undefined): Asset {
+function requireUsageAsset(current: Asset | undefined, today: LocalDate): Asset {
   if (!current) throw new AssetConflictError('资产不存在或已删除。');
   if (current.costMode !== 'use') throw new AssetConflictError('该资产已切换为按天观察，请刷新页面。');
   if (current.lifecycleStatus === 'pending') throw new AssetConflictError('该资产尚未开始服役，不能记录使用次数。');
-  if (current.lifecycleStatus !== 'active') throw new AssetConflictError('该资产已结束服役，不能继续记录使用次数。');
+  if (effectiveAsset(current, today).lifecycleStatus !== 'active') throw new AssetConflictError('该资产已结束服役，不能继续记录使用次数。');
   return current;
 }
 async function assertCapacity(database: AssetDatabase, rows = 1): Promise<void> {
@@ -109,7 +110,7 @@ export async function updateAsset(id: string, expected: Asset, patch: AssetPatch
 
 export async function incrementUsage(id: string, database: AssetDatabase = db, now = new Date()): Promise<Asset> {
   return database.transaction('rw', database.assets, async () => {
-    const current = requireUsageAsset(await database.assets.get(id));
+    const current = requireUsageAsset(await database.assets.get(id), localToday(now));
     if (current.usageCount >= MAX_USAGE_COUNT) throw new Error('使用次数已达到上限。');
     const updated = { ...current, usageCount: current.usageCount + 1, updatedAt: now.toISOString() };
     await database.assets.put(updated);

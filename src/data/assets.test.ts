@@ -105,6 +105,17 @@ describe('asset CRUD', () => {
 
 
 describe('usage count writes', () => {
+  it('blocks +1 after expiry while allowing correction and a renewed expiry date', async () => {
+    const created = await createAsset({ ...input, expiryDate: '2026-09-13' }, database, now);
+    expect((await incrementUsage(created.id, database, now)).usageCount).toBe(4);
+    const tomorrow = new Date('2026-09-14T08:00:00.000Z');
+    await expect(incrementUsage(created.id, database, tomorrow)).rejects.toThrow('已结束服役');
+    expect((await database.assets.get(created.id))?.usageCount).toBe(4);
+    const corrected = await correctUsageCount(created.id, 4, '5', database, tomorrow);
+    const renewed = await updateAsset(created.id, corrected, { ...input, expiryDate: '2026-09-15' }, database, tomorrow);
+    expect((await incrementUsage(renewed.id, database, tomorrow)).usageCount).toBe(6);
+  });
+
   it('rejects a stale +1 after ending service but permits historical correction and reopening', async () => {
     const created = await createAsset(input, database, now);
     const ended = await updateAsset(created.id, created, { ...input, lifecycleStatus: 'sold', endedDate: '2026-09-13', salePrice: '1' }, database, now);

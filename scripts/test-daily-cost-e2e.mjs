@@ -81,7 +81,7 @@ try {
   browser = await startChrome();
   app = await openSession(await getPage('about:blank'));
   await app.send('Page.enable');
-  await app.send('Page.addScriptToEvaluateOnNewDocument', { source: `const NativeDate = Date; window.Date = class extends NativeDate { constructor(...args) { super(...(args.length ? args : ['2026-10-09T12:00:00Z'])); } static now() { return new NativeDate('2026-10-09T12:00:00Z').getTime(); } };` });
+  await app.send('Page.addScriptToEvaluateOnNewDocument', { source: `const NativeDate = Date; window.__testNow = '2026-10-09T12:00:00Z'; window.Date = class extends NativeDate { constructor(...args) { super(...(args.length ? args : [window.__testNow])); } static now() { return new NativeDate(window.__testNow).getTime(); } };` });
   await app.send('Page.navigate', { url: baseUrl });
   await waitFor(app, 'document.body.innerText.includes("好物总览")', '首页启动');
   await app.evaluate(`new Promise((resolve, reject) => {
@@ -98,7 +98,8 @@ try {
         { ...base, id: crypto.randomUUID(), name: '待服役', lifecycleStatus: 'pending', serviceStartDate: null },
         { ...base, id: crypto.randomUUID(), name: '已退役', lifecycleStatus: 'retired', endedDate: '2026-10-08' },
         { ...base, id: crypto.randomUUID(), name: '已卖出', lifecycleStatus: 'sold', endedDate: '2026-10-08' },
-        { ...base, id: crypto.randomUUID(), name: '按次', costMode: 'use', usageCount: 3 }];
+        { ...base, id: '33333333-3333-4333-8333-333333333333', name: '到期当天按次', costMode: 'use', usageCount: 3, expiryDate: '2026-10-09' },
+        { ...base, id: '44444444-4444-4444-8444-444444444444', name: '已到期按次', costMode: 'use', usageCount: 3, expiryDate: '2026-10-08' }];
       for (const asset of assets) tx.objectStore('assets').add(asset);
       tx.oncomplete = () => { db.close(); resolve(true); };
       tx.onerror = () => reject(tx.error);
@@ -107,6 +108,10 @@ try {
   await app.send('Page.reload');
   await waitFor(app, 'document.querySelector(".daily-cost-summary")?.innerText.includes("¥93.05")', '一年租金和开放期间合计');
   if (!await app.evaluate('document.querySelector(".daily-cost-summary").innerText.includes("共 2 件")')) throw new Error('首页计入了期间外或非按天费用');
+  if (!await app.evaluate('[...document.querySelectorAll(".status-facts > div")].find(item => item.querySelector("small")?.textContent === "已退役")?.querySelector("strong")?.textContent === "3 件"')) throw new Error('已到期好物未计入已退役数量');
+  if (!await app.evaluate('![...document.querySelectorAll(".asset-card")].some(item => item.innerText.includes("已到期"))')) throw new Error('到期好物仍显示在默认服役中列表');
+  await app.evaluate('location.hash = "#/ledgers/retired"');
+  await waitFor(app, 'document.body.innerText.includes("已到期房租") && document.body.innerText.includes("已到期按次")', '到期好物归入已退役账本');
   await app.evaluate('location.hash = "#/assets/11111111-1111-4111-8111-111111111111/edit"');
   await waitFor(app, `(${labelInput('名称')})?.value === '房租'`, '房租编辑');
   await app.evaluate(`(() => { const input = ${labelInput('到期日期')}; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, '2028-09-30'); input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new Event('change', { bubbles: true })); })()`);
@@ -121,11 +126,19 @@ try {
   await app.evaluate('location.hash = "#/assets/22222222-2222-4222-8222-222222222222"');
   await waitFor(app, 'document.querySelector("h1")?.textContent === "已到期房租"', '到期费用详情');
   if (!await app.evaluate('document.body.innerText.includes("不计入今日使用成本")')) throw new Error('到期费用详情缺少日期归属说明');
+  if (!await app.evaluate('document.body.innerText.includes("自动按已退役处理") && document.querySelector("dl:not(.cost-summary)")?.innerText.includes("已退役")')) throw new Error('详情没有按到期日退役');
   for (const width of [320, 390]) {
     await app.send('Emulation.setDeviceMetricsOverride', { width, height: 844, deviceScaleFactor: 1, mobile: true });
     if (await app.evaluate('document.documentElement.scrollWidth > innerWidth + 1')) throw new Error(`${width}px 日期期间详情横向溢出`);
   }
-  console.log('PASS: 修改房租为两年后详情 ¥45.96/天（731天），首页与统计 ¥46.96；只计入今天的两件按天费用，期间外/非按天费用排除。');
+  await app.evaluate('location.hash = "#/assets/44444444-4444-4444-8444-444444444444"');
+  await waitFor(app, 'document.querySelector("h1")?.textContent === "已到期按次"', '到期按次详情');
+  if (!await app.evaluate('![...document.querySelectorAll("button")].some(item => item.textContent === "+ 使用一次") && document.body.innerText.includes("更正次数")')) throw new Error('已到期按次仍可继续使用或无法更正历史');
+  await app.evaluate('location.hash = "#/assets/33333333-3333-4333-8333-333333333333"');
+  await waitFor(app, '[...document.querySelectorAll("button")].some(item => item.textContent === "+ 使用一次")', '到期当天仍可使用');
+  await app.evaluate('window.__testNow = "2026-10-10T12:00:00Z"; window.dispatchEvent(new Event("focus"))');
+  await waitFor(app, 'document.body.innerText.includes("自动按已退役处理") && ![...document.querySelectorAll("button")].some(item => item.textContent === "+ 使用一次")', '次日恢复自动退役');
+  console.log('PASS: 全期间成本、到期退役数量与账本、详情结束日期、到期按次限制及跨日自动退役。');
 } finally {
   app?.close();
   browser?.kill('SIGTERM');

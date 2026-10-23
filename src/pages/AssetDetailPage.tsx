@@ -9,6 +9,7 @@ import { getAssetDetailSnapshot } from '../data/queries';
 import { calculateAssetCosts } from '../domain/calculations';
 import { expiryStatus } from '../domain/dates';
 import { statusNames } from '../domain/ledgers';
+import { effectiveAsset } from '../domain/lifecycle';
 import { formatCents, formatRatio } from '../domain/money';
 import type { CostRecord, RevenueRecord } from '../domain/types';
 import { MAX_USAGE_COUNT } from '../domain/validation';
@@ -53,7 +54,8 @@ function AssetDetail() {
   if (result === undefined) return <section><p>正在加载…</p></section>;
   if (result.error) return <section><h1>好物详情</h1><ErrorMessage>{result.error}</ErrorMessage><button onClick={() => window.location.reload()}>重试</button></section>;
   if (!result.snapshot) return <section><h1>好物不存在或已删除</h1><Link to={listPath} replace>返回上一级</Link></section>;
-  const { asset, category, costs, revenues } = result.snapshot; const values = calculateAssetCosts(asset, costs, revenues, today);
+  const { category, costs, revenues } = result.snapshot;
+  const asset = effectiveAsset(result.snapshot.asset, today); const values = calculateAssetCosts(asset, costs, revenues, today);
   const records: DisplayRecord[] = [...costs.map(record => ({ table: 'cost' as const, record })), ...revenues.map(record => ({ table: 'revenue' as const, record }))]
     .sort((a, b) => b.record.date.localeCompare(a.record.date) || b.record.createdAt.localeCompare(a.record.createdAt) || a.record.id.localeCompare(b.record.id));
   const dayMetric = values.costPerDay ? `${formatRatio(values.costPerDay.numeratorCents, values.costPerDay.denominator)} / 天` : '— / 尚未服役';
@@ -88,6 +90,7 @@ function AssetDetail() {
     {correcting && <form className="usage-correction" onSubmit={submitCorrection} noValidate><label>累计使用次数<input autoFocus inputMode="numeric" value={correctionValue} onChange={event => setCorrectionValue(event.target.value)} aria-describedby={correctionError ? 'usage-correction-error' : undefined} /></label>{correctionError && <ErrorMessage id="usage-correction-error">{correctionError}</ErrorMessage>}<div className="button-row"><button className="primary" disabled={correctionBusy}>{correctionBusy ? '保存中…' : '保存更正'}</button><button type="button" disabled={correctionBusy} onClick={() => setCorrecting(false)}>取消</button></div></form>}
     {asset.costMode === 'day' && values.costPerDay !== null && <p className="notice">{values.costPeriodEnd !== null ? '费用按完整起止日期均摊，包含首尾两天。' : '费用按截至今天已使用的天数摊薄。'}{values.countsDailyCostToday ? '计入今日使用成本。' : '不计入今日使用成本。'}</p>}
     {values.netCostCents < 0 && <p className="notice">收益已超过投入</p>}{values.clockBeforePurchase && <p className="notice">设备日期早于好物日期，请检查系统时钟；计费天数最低按 1 天显示。</p>}
+    {asset !== result.snapshot.asset && <p className="notice">已于 {asset.endedDate} 到期，自动按已退役处理；如需继续使用，可编辑到期日期。</p>}
     <h2>成本构成</h2><dl className="cost-summary"><dt>本体</dt><dd>{formatCents(values.purchaseCostCents)}</dd><dt>后续本体投入</dt><dd>{formatCents(values.additionalCostCents)}</dd><dt>耗材投入</dt><dd>{formatCents(values.consumableCostCents)}</dd><dt>总投入</dt><dd>{formatCents(values.totalCostCents)}</dd><dt>收益</dt><dd>{formatCents(values.revenueCents)}</dd><dt><strong>净投入</strong></dt><dd><strong>{formatCents(values.netCostCents)}</strong></dd></dl>
     <h2>好物信息</h2><dl><dt>类别</dt><dd>{category?.name ?? '未分类'}</dd><dt>状态</dt><dd>{statusNames[asset.lifecycleStatus]}</dd><dt>开始使用日期</dt><dd>{asset.serviceStartDate ?? '尚未开始'}</dd><dt>结束日期</dt><dd>{asset.endedDate ?? (asset.lifecycleStatus === 'active' ? '未结束' : asset.lifecycleStatus === 'pending' ? '尚未开始' : '未填写')}</dd><dt>购买日期</dt><dd>{asset.purchaseDate}</dd><dt>观察方式</dt><dd>{asset.costMode === 'day' ? '按天' : '按次'}</dd><dt>到期日期</dt><dd>{asset.expiryDate ?? '未设置'}</dd>{asset.lifecycleStatus === 'active' && <><dt>到期状态</dt><dd>{expiryText(asset.expiryDate, today)}</dd></>}{asset.note && <><dt>备注</dt><dd>{asset.note}</dd></>}</dl>
     {asset.lifecycleStatus === 'sold' && <p className="notice">卖价已按“出售”收益流水记录；旧版已卖出好物如尚未记录卖价，请手动补记。更正卖出状态不会自动删除已有收益。</p>}

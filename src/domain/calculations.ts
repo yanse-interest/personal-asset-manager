@@ -1,4 +1,5 @@
 import { daysOwned } from './dates';
+import { effectiveAsset } from './lifecycle';
 import type { Asset, CostRecord, LocalDate, RevenueRecord } from './types';
 
 export interface CostRatio { numeratorCents: number; denominator: number }
@@ -32,6 +33,7 @@ export function calculateAssetCosts(
   revenues: readonly RevenueRecord[],
   today: LocalDate,
 ): AssetCosts {
+  asset = effectiveAsset(asset, today);
   let additionalCostCents = 0;
   let consumableCostCents = 0;
   let revenueCents = 0;
